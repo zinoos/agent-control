@@ -132,10 +132,19 @@ launcher on PATH, the panel also gets a button that opens it.
 ## Live desktop streams (optional)
 
 agentControl can show what an agent sees when it uses a computer-use MCP server that gives each agent its
-own desktop. It speaks the registry format of **hypr-computer**, a Hyprland MCP server where each agent
-gets a nested Hyprland session. Without it, tiles show terminals only and the stream controls are hidden.
+own desktop: [hypr-computer](https://github.com/zinoos/hypr-computer), a Hyprland MCP server where each
+agent gets a nested Hyprland session. Without it, tiles show terminals only and the stream controls are
+hidden.
 
-The contract, if you want to plug in something else:
+To enable streams, install hypr-computer (its README covers the MCP setup) and check it out next to this
+repo, or point `HYPR_COMPUTER_SRC` at its `src/` directory:
+
+```sh
+git clone https://github.com/zinoos/hypr-computer.git ~/projects/hypr-computer   # next to agent-control
+```
+
+The contract, if you want to plug in a different desktop provider:
+
 - each agent desktop writes `$XDG_RUNTIME_DIR/hypr-computer/<name>.json` with
   `{"name", "pid", "wl_socket", "width", "height", "place", "accent", "owner_pid"}`, where `owner_pid` is
   the MCP server process (a descendant of the agent's Claude Code session)
