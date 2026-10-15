@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=agentControl
+GenericName=Agent monitor
+Comment=Watch and talk to your Claude Code agents: terminals, chat, live desktop streams
+Exec=agentcontrol
+Icon=utilities-system-monitor
+Terminal=false
+Categories=Development;Utility;
+Keywords=claude;agents;ai;stream;tmux;
+StartupWMClass=dev.agentcontrol.App

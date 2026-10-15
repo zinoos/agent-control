@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# agentControl: watch and talk to all Claude Code agents.
+# Needs a Python with PyGObject (GTK 4, libadwaita, VTE): the system one by default.
+# Live desktop streams are optional: hypr-computer is used if it's checked out next to this repo
+# (../hypr-computer) or at $HYPR_COMPUTER_SRC.
+here="$(cd -- "$(dirname -- "$(readlink -f "${BASH_SOURCE[0]}")")/.." && pwd)"
+hc="${HYPR_COMPUTER_SRC:-$here/../hypr-computer/src}"
+export PYTHONPATH="$here/src${PYTHONPATH:+:$PYTHONPATH}"
+[ -d "$hc" ] && PYTHONPATH="$PYTHONPATH:$hc"
+exec "${AGENTCONTROL_PYTHON:-/usr/bin/python3}" -m agentcontrol "$@"
