@@ -841,11 +841,26 @@ headerbar {{ background: alpha(var(--headerbar-bg-color), {a}); }}
                 pg.add(g)
             d.add(pg)
 
-        font_row = Adw.ActionRow(title="Font")
-        font_btn = Gtk.FontDialogButton(dialog=Gtk.FontDialog(), valign=Gtk.Align.CENTER,
-                                        font_desc=Pango.FontDescription.from_string(c["font"]))
-        font_btn.connect("notify::font-desc", lambda b, _p: self._set("font", b.get_font_desc().to_string()))
-        font_row.add_suffix(font_btn)
+        # A list in the dialog, not Gtk.FontDialogButton: its modal chooser window slips behind the main
+        # window on Hyprland after a click outside it and then blocks all input.
+        desc = Pango.FontDescription.from_string(c["font"])
+        families = sorted({f.get_name() for f in self.win.get_pango_context().list_families() if f.is_monospace()}
+                          | {"Monospace"}, key=str.lower)
+        lower = [f.lower() for f in families]
+        fam = (desc.get_family() or "Monospace").lower()
+        if fam not in lower:
+            families.insert(0, desc.get_family())
+            lower.insert(0, fam)
+        font_row = Adw.ComboRow(title="Font", model=Gtk.StringList.new(families), enable_search=True)
+        font_row.set_selected(lower.index(fam))
+        size_row = Adw.SpinRow.new_with_range(6, 32, 1)
+        size_row.set_title("Font size")
+        size_row.set_value(desc.get_size() / Pango.SCALE or 10)
+
+        def font_changed(*_):
+            self._set("font", f"{families[font_row.get_selected()]} {int(size_row.get_value())}")
+        font_row.connect("notify::selected", font_changed)
+        size_row.connect("notify::value", font_changed)
         accents = ["system", "blue", "teal", "green", "yellow", "orange", "red", "pink", "purple", "slate"]
         schemes = list(settings.SCHEMES)
         page("Appearance", "preferences-desktop-appearance-symbolic", [
@@ -855,7 +870,7 @@ headerbar {{ background: alpha(var(--headerbar-bg-color), {a}); }}
                               "Focused tile and selection")], None),
             ("Tiles", [spin("Gap", 0, 32, 2, "gap", "Space between tiles in pixels"),
                        spin("Corner radius", 0, 24, 2, "radius", "In pixels")], None),
-            ("Terminal", [font_row,
+            ("Terminal", [font_row, size_row,
                           combo("Color scheme", "scheme", schemes, [n if n != "kitty" else "Like kitty" for n in schemes],
                                 "“Like kitty” reads the colors from ~/.config/kitty/kitty.conf")], None),
         ])
