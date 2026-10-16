@@ -1,5 +1,5 @@
-"""One agent session: its Claude Code terminal (tmux attach in VTE), its live desktop stream while it is
-using one, and a message box to talk to it."""
+"""One agent session: its Claude Code terminal (tmux attach in VTE), which you type into directly, and its
+live desktop stream while it is using one."""
 
 from __future__ import annotations
 
@@ -87,18 +87,6 @@ class SessionTile(Gtk.Box):
         self.stream.set_visible(False)
         self._spawn()
 
-        # ---- message box
-        row = Gtk.Box(spacing=6)
-        row.add_css_class("chat-row")
-        self.entry = Gtk.Entry(hexpand=True, placeholder_text=f"Message {name}…  (Enter sends; it reaches the agent even mid-task)")
-        self.entry.connect("activate", self._send)
-        send = Gtk.Button(icon_name="mail-send-symbolic", tooltip_text="Send")
-        send.add_css_class("suggested-action")
-        send.connect("clicked", self._send)
-        row.append(self.entry)
-        row.append(send)
-        self.append(row)
-
     # ------------------------------------------------------------ terminal
 
     def _spawn(self):
@@ -113,14 +101,7 @@ class SessionTile(Gtk.Box):
         else:
             self.sub.set_label("session ended")
 
-    # ------------------------------------------------------------ chat
-
-    def _send(self, *_):
-        text = self.entry.get_text().strip()
-        if not text:
-            return
-        self.entry.set_text("")
-        self._bg(sessions.send, self.name, text)
+    # ------------------------------------------------------------ background actions
 
     def _bg(self, fn, *a):
         threading.Thread(target=lambda: self._safe(fn, *a), daemon=True).start()
@@ -161,7 +142,7 @@ class SessionTile(Gtk.Box):
     def _split(self):
         w = self.paned.get_width()
         if w > 0:
-            self.paned.set_position(int(w * 0.66))  # stream left, the session's terminal as "chat" on the right
+            self.paned.set_position(int(w * 0.66))  # stream left, the session's terminal on the right
         return False
 
     def set_fps(self, fps: int):

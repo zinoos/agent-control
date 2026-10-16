@@ -1,15 +1,14 @@
 # agentControl
 
 Every [Claude Code](https://docs.anthropic.com/en/docs/claude-code) agent at a glance. agentControl runs your
-agents as Claude Code sessions in a dedicated tmux server and shows each one as a tile: its terminal, a
-message box that reaches it even mid-task, and (optionally) a live stream of the agent's own desktop while
-it uses one. A tmux-like grid puts several agents on one screen, projects group them in the sidebar, and a
+agents as Claude Code sessions in a dedicated tmux server and shows each one as a tile: its terminal, which you type
+into directly, and (optionally) a live stream of the agent's own desktop while it uses one. A tmux-like grid puts several agents on one screen, projects group them in the sidebar, and a
 token panel shows what they cost.
 
 Native GTK 4 / libadwaita + VTE, written in Python. Linux only.
 
-- **Tiles**: each agent's Claude Code terminal (type straight into it), state (working / idle), and a
-  message box. Focus one, or grid them in auto / 1–4 columns.
+- **Tiles**: each agent's Claude Code terminal (type straight into it) and its state (working / idle).
+  Focus one, or grid them in auto / 1–4 columns.
 - **`ac` CLI**: start, message, read and wait for agents from any shell, including from another agent.
 - **Projects**: named working directories; agents are grouped by the project they run in.
 - **Token usage panel** (optional): the [TokenTracker](https://github.com/xiufengsun/TokenTracker) dashboard
@@ -90,7 +89,7 @@ In the app:
 - **Grid button**: auto grid or a fixed 1-4 columns. The eye button hides or shows an agent in the grid
 - Per tile: **Stop** = Esc, **×** hides the tile (the session keeps running). With streams available, the
   **video button** cycles auto / stream / terminal
-- Type straight into a tile's terminal, or use the message box under it
+- Type straight into a tile's terminal; `ac send` messages an agent from any shell
 
 Only sessions started through agentControl (`ac new`, the + button or resume) appear; a `claude` started in
 a plain terminal doesn't.
@@ -170,7 +169,7 @@ file at the same `ac` commands.
 ## How it works
 
 - Agents are Claude Code processes in their own tmux server (`tmux -L agentcontrol`, config `tmux.conf`).
-- A tile's terminal is a VTE running `tmux attach`. The message box uses tmux bracketed paste + Enter, which
+- A tile's terminal is a VTE running `tmux attach`. `ac send` uses tmux bracketed paste + Enter, which
   Claude Code queues while it's working.
 - State (working / idle) comes from the terminal title Claude Code sets (spinner vs ✳).
 - An agent started for a project is tagged with the tmux session option `@ac_project`. An untagged agent

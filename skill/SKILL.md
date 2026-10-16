@@ -8,7 +8,7 @@ argument-hint: "[start <task> | status | check <name> | tell <name> <message>]"
 # agentControl: agents the user can watch and talk to
 
 agentControl (`agentcontrol`) shows every agent as a tile: its Claude Code terminal, a live stream of its
-own desktop while it uses one (hypr-computer agent desktops, if installed), and a message box. Its agents are Claude Code sessions in a dedicated tmux server (`tmux -L agentcontrol`),
+own desktop while it uses one (hypr-computer agent desktops, if installed). Its agents are Claude Code sessions in a dedicated tmux server (`tmux -L agentcontrol`),
 managed with the `ac` CLI, which works from your shell too.
 
 | Command | Does |

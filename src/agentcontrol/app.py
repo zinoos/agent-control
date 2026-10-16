@@ -1,5 +1,5 @@
-"""agentControl: every Claude Code agent at a glance. Live streams of agent desktops, their terminals, a
-message box per agent, and a tmux-like grid to put several on one screen."""
+"""agentControl: every Claude Code agent at a glance. Their terminals, live streams of agent
+desktops, and a tmux-like grid to put several on one screen."""
 
 from __future__ import annotations
 
@@ -49,7 +49,6 @@ window, .main { background: #0e0f12; }
 .stream-chip { background: alpha(black, 0.6); color: white; border-radius: 4px; padding: 2px 8px; font-size: 12px; }
 .stream-ticker { background: linear-gradient(to top, alpha(black, 0.75), transparent); color: white;
                  padding: 14px 12px 8px 12px; font-size: 13px; }
-.chat-row { padding: 6px; border-top: 1px solid alpha(white, 0.05); }
 .empty-title { font-size: 22px; font-weight: 800; }
 .running-pill { background: alpha(#51cf66, 0.2); color: #51cf66; font-weight: 700; font-size: 10px;
                 border-radius: 4px; padding: 1px 6px; }
