@@ -1,0 +1,32 @@
+{
+  "name": "agentcontrol",
+  "version": "0.1.0",
+  "description": "Watch and talk to all your Claude Code agents in one GTK window, with the ac CLI.",
+  "license": "MIT",
+  "author": "zinoos",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/zinoos/agent-control.git"
+  },
+  "homepage": "https://github.com/zinoos/agent-control#readme",
+  "bin": {
+    "agentcontrol": "bin/agentcontrol",
+    "ac": "bin/ac"
+  },
+  "files": [
+    "bin",
+    "src",
+    "data",
+    "scripts",
+    "tmux.conf"
+  ],
+  "scripts": {
+    "postinstall": "node scripts/postinstall.js"
+  },
+  "os": [
+    "linux"
+  ],
+  "engines": {
+    "node": ">=18"
+  }
+}

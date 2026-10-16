@@ -17,11 +17,12 @@ gi.require_version("Adw", "1")
 gi.require_version("Pango", "1.0")
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, Pango  # noqa: E402
 
-from . import history, projects, sessions, settings, stream  # noqa: E402
+from . import history, projects, sessions, settings, stream, updates  # noqa: E402
 from .tile import SessionTile  # noqa: E402
 from .tokens import TokenPanel  # noqa: E402
 
 ICONS = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "icons")
+UPDATE_EVERY = 1800  # seconds between checks of origin/master
 STATE = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state")), "agentcontrol.json")
 
 CSS = """
@@ -175,6 +176,12 @@ class App(Adw.Application):
         content_head.pack_start(sidebar_btn)
         content_head.pack_start(layout_btn)
         content_head.set_title_widget(self.layout_label)
+        self.update = None
+        self.update_btn = Gtk.Button(icon_name="software-update-available-symbolic", label="Update",
+                                     css_classes=["suggested-action"])
+        self.update_btn.set_visible(False)
+        self.update_btn.connect("clicked", lambda *_: self._update_clicked())
+        content_head.pack_end(self.update_btn)
         content_tb.add_top_bar(content_head)
         self.tokens = TokenPanel(self)
         self.tokens.set_margin_top(8)
@@ -222,6 +229,56 @@ class App(Adw.Application):
         if self.tokens_open:
             self.toggle_tokens(True)
         GLib.timeout_add(1000, self._tick)
+        self._check_updates()
+        GLib.timeout_add_seconds(UPDATE_EVERY, self._check_updates)
+
+    # ------------------------------------------------------------ updates
+
+    def _check_updates(self):
+        threading.Thread(target=self._find_update, daemon=True).start()
+        return True
+
+    def _find_update(self):
+        try:
+            u = updates.check()
+        except Exception:  # offline or no origin: the next check tries again
+            return
+        GLib.idle_add(self._show_update, u)
+
+    def _show_update(self, u: updates.Update | None):
+        self.update = u
+        self.update_btn.set_visible(u is not None)
+        if u:
+            s = "s" if u.behind != 1 else ""
+            self.update_btn.set_tooltip_text(f"{u.behind} new commit{s} on master ({u.local} → {u.remote})")
+        return False
+
+    def _update_clicked(self):
+        self.update_btn.set_sensitive(False)
+        self.update_btn.set_label("Updating…")
+        threading.Thread(target=self._do_update, daemon=True).start()
+
+    def _do_update(self):
+        try:
+            sha = updates.apply()
+        except Exception as ex:
+            GLib.idle_add(self._update_failed, str(ex).splitlines()[0] if str(ex) else "git failed")
+            return
+        GLib.idle_add(self._update_done, sha)
+
+    def _update_done(self, sha):
+        self.update = None
+        self.update_btn.set_visible(False)
+        self.update_btn.set_sensitive(True)
+        self.update_btn.set_label("Update")
+        self.toast(f"Updated to {sha}. Restart Agent Control to run the new version.", timeout=8)
+        return False
+
+    def _update_failed(self, msg):
+        self.update_btn.set_sensitive(True)
+        self.update_btn.set_label("Update")
+        self.toast(f"Update failed: {msg}", timeout=8)
+        return False
 
     # ------------------------------------------------------------ polling
 
@@ -901,8 +958,8 @@ headerbar {{ background-color: alpha(var(--headerbar-bg-color), {a}); }}
         page("Panels", "view-dual-symbolic", groups)
         d.present(self.win)
 
-    def toast(self, text):
-        self.toasts.add_toast(Adw.Toast(title=text, timeout=3))
+    def toast(self, text, timeout=3):
+        self.toasts.add_toast(Adw.Toast(title=text, timeout=timeout))
         return False
 
 
