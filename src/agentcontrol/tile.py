@@ -13,13 +13,9 @@ gi.require_version("Vte", "3.91")
 gi.require_version("Pango", "1.0")
 from gi.repository import Gdk, GLib, Gtk, Pango, Vte  # noqa: E402
 
-from . import sessions  # noqa: E402
+from . import sessions, settings  # noqa: E402
 from . import stream  # noqa: E402
 from .stream import StreamView  # noqa: E402
-
-PALETTE = ["#1b1d22", "#ff6b6b", "#69db7c", "#ffd43b", "#74c0fc", "#da77f2", "#66d9e8", "#ced4da",
-           "#495057", "#ff8787", "#8ce99a", "#ffe066", "#a5d8ff", "#e599f7", "#99e9f2", "#f8f9fa"]
-
 
 def _rgba(hexcolor: str) -> Gdk.RGBA:
     c = Gdk.RGBA()
@@ -33,7 +29,7 @@ class SessionTile(Gtk.Box):
         self.app = app
         self.name = name
         self.session: sessions.Session | None = None
-        self.mode = "auto"  # auto | stream | terminal
+        self.mode = app.cfg["view"]  # auto | stream | terminal
         self.add_css_class("tile")
 
         # ---- header
@@ -72,8 +68,7 @@ class SessionTile(Gtk.Box):
         # ---- body: stream | terminal
         self.stream = StreamView()
         self.term = Vte.Terminal(hexpand=True, vexpand=True)
-        self.term.set_font(Pango.FontDescription.from_string(os.environ.get("AGENTCONTROL_FONT", "monospace 10")))
-        self.term.set_colors(_rgba("#e9ecef"), _rgba("#14161a"), [_rgba(c) for c in PALETTE])
+        self.apply_look()
         self.term.set_scrollback_lines(0)  # tmux keeps the history
         self.term.set_mouse_autohide(True)
         self.term.connect("child-exited", self._on_exit)
@@ -88,6 +83,14 @@ class SessionTile(Gtk.Box):
         self._spawn()
 
     # ------------------------------------------------------------ terminal
+
+    def apply_look(self):
+        cfg = self.app.cfg
+        fg, bg, pal = settings.scheme(cfg["scheme"])
+        self.term.set_font(Pango.FontDescription.from_string(cfg["font"]))
+        bg = _rgba(bg)
+        bg.alpha = cfg["opacity"]
+        self.term.set_colors(_rgba(fg), bg, [_rgba(c) for c in pal])
 
     def _spawn(self):
         argv = sessions.attach_argv(self.name)

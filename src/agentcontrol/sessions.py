@@ -10,7 +10,7 @@ import subprocess
 import time
 from dataclasses import dataclass, field
 
-from . import projects
+from . import projects, settings
 
 SOCKET = os.environ.get("AGENTCONTROL_SOCKET", "agentcontrol")  # override only for testing
 CONF = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "tmux.conf")
@@ -167,7 +167,9 @@ def new_session(name: str | None = None, cwd: str | None = None, prompt: str | N
     if name in existing:
         raise RuntimeError(f"a session called {name!r} already exists")
     cwd = os.path.expanduser(cwd or "~")
-    cmd = ["claude", *(claude_args or [])]
+    if not os.path.isdir(cwd):
+        raise RuntimeError(f"no such directory: {cwd}")  # tmux would silently start it in ~ instead
+    cmd = ["claude", *shlex.split(settings.get("claude_args")), *(claude_args or [])]
     if prompt:
         cmd.append(prompt)
     tmux("new-session", "-d", "-s", name, "-c", cwd, "-x", "160", "-y", "48",

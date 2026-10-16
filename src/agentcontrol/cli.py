@@ -5,8 +5,8 @@
                                                          starts in the project's directory
   ac ls                                                  list agents by project (state, desktop, live)
   ac projects                                            list projects
-  ac project add NAME [DIR]                              add a project (DIR default ~/projects/NAME, or
-                                                         $AGENTCONTROL_PROJECTS_DIR/NAME; created if missing)
+  ac project add NAME [DIR]                              add a project (DIR default ~/projects/NAME, or the
+                                                         folder from Settings; created if missing)
   ac project rm NAME                                     forget a project (files and agents stay)
   ac attach NAME                                         attach this terminal to an agent
   ac send NAME TEXT...                                   send a message (even mid-task)

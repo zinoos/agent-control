@@ -14,9 +14,10 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
+gi.require_version("Pango", "1.0")
+from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, Pango  # noqa: E402
 
-from . import history, projects, sessions  # noqa: E402
+from . import history, projects, sessions, settings, stream  # noqa: E402
 from .tile import SessionTile  # noqa: E402
 from .tokens import TokenPanel  # noqa: E402
 
@@ -74,7 +75,10 @@ class App(Adw.Application):
         self.tokens_open = False
         self.tokens_width = 1000
         self.sidebar_shown = True
+        self.cfg = settings.load()
         self._load_state()
+        if self.cfg["tokens_at_start"] != "last":
+            self.tokens_open = self.cfg["tokens_at_start"] == "open"
         # Quit cleanly on signals too, so "shutdown" runs and stops the token panel's server.
         self.connect("shutdown", lambda *_: self.tokens.stop() if hasattr(self, "tokens") else None)
         for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
@@ -114,6 +118,9 @@ class App(Adw.Application):
         prov.load_from_string(CSS)
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), prov,
                                                   Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        self.look = Gtk.CssProvider()
+        Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), self.look,
+                                                  Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION + 1)
         # App icon and logo straight from the checkout, so they show without installing anything.
         Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(ICONS)
         Gtk.Window.set_default_icon_name("dev.agentcontrol.App")
@@ -142,6 +149,9 @@ class App(Adw.Application):
                                 tooltip_text="Resume a past session (Ctrl+Shift+R)")
         resume_btn.connect("clicked", lambda *_: self.resume_dialog())
         side_head.pack_start(resume_btn)
+        settings_btn = Gtk.Button(icon_name="emblem-system-symbolic", tooltip_text="Settings (Ctrl+,)")
+        settings_btn.connect("clicked", lambda *_: self.settings_dialog())
+        side_head.pack_end(settings_btn)
         side_tb.add_top_bar(side_head)
         side_tb.set_content(side_scroll)
 
@@ -184,6 +194,7 @@ class App(Adw.Application):
                             GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE)
         split.connect("notify::show-sidebar", self._sidebar_toggled)
         self.win.set_content(split)
+        self.apply_look()
 
         act = Gio.SimpleAction.new_stateful("cols", GLib.VariantType.new("i"), GLib.Variant("i", self.cols))
         act.connect("activate", lambda a, v: self.set_cols(v.get_int32()))
@@ -191,6 +202,7 @@ class App(Adw.Application):
         for name, keys, cb in (("new", ["<Control>n"], lambda *_: self.new_dialog()),
                                ("new-project", ["<Control><Shift>n"], lambda *_: self.project_dialog()),
                                ("resume", ["<Control><Shift>r"], lambda *_: self.resume_dialog()),
+                               ("settings", ["<Control>comma"], lambda *_: self.settings_dialog()),
                                ("grid", ["<Control>g"], lambda *_: self.toggle_focus(None)),
                                ("tokens", ["<Control><Shift>t"], lambda *_: self.toggle_tokens(not self.tokens_open)),
                                ("sidebar", ["<Control>b"], lambda *_: split.set_show_sidebar(not split.get_show_sidebar()))):
@@ -233,6 +245,13 @@ class App(Adw.Application):
             if n not in self.order:
                 self.order.append(n)
         by = {s.name: s for s in ss}
+        if self.cfg["notify"] and not self.win.is_active():
+            for s in ss:
+                old = self.sessions.get(s.name)
+                if old and old.state == "working" and s.state == "idle":
+                    n = Gio.Notification.new(f"{s.name} is done")
+                    n.set_body(s.label)
+                    self.send_notification(f"done-{s.name}", n)
         self.sessions = by
         # sidebar: one row per agent, inside its project's expander
         for n in list(self.rows):
@@ -422,6 +441,9 @@ class App(Adw.Application):
         self.toast(f"copied: {text}")
 
     def _confirm_kill(self, name):
+        if not self.cfg["confirm_kill"]:
+            sessions.kill(name)
+            return
         d = Adw.AlertDialog(heading=f"End {name}?", body="The Claude Code session and its tmux session close. "
                             "Its agent desktop (if any) stops when the session's MCP server exits.")
         d.add_response("cancel", "Cancel")
@@ -481,7 +503,7 @@ class App(Adw.Application):
             t = self.tiles[name]
             self.grid.attach(t, i % cols, i // cols, 1, 1)
             # Streams in a crowded grid don't need 30 fps.
-            t.set_fps(30 if n <= 2 else 15 if n <= 4 else 8)
+            t.set_fps(min(self.cfg["max_fps"], 30 if n <= 2 else 15 if n <= 4 else 8))
         if self.focus:
             self.tiles[self.focus].add_css_class("focused-tile")
 
@@ -675,7 +697,7 @@ class App(Adw.Application):
                                  "in the sidebar. A directory that doesn't exist yet is created.")
         box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=6)
         name = Gtk.Entry(text=proj.name if proj else "", placeholder_text="e.g. my-app", activates_default=True)
-        path = Gtk.Entry(text=proj.short_path if proj else projects.ROOT + "/", hexpand=True, activates_default=True)
+        path = Gtk.Entry(text=proj.short_path if proj else projects.root() + "/", hexpand=True, activates_default=True)
         browse = Gtk.Button(icon_name="folder-open-symbolic", tooltip_text="Choose a folder")
         row = Gtk.Box(spacing=6)
         row.append(path)
@@ -687,7 +709,7 @@ class App(Adw.Application):
         def name_changed(*_):
             if auto["on"]:
                 auto["setting"] = True
-                path.set_text(projects.default_dir(name.get_text()) if name.get_text().strip() else projects.ROOT + "/")
+                path.set_text(projects.default_dir(name.get_text()) if name.get_text().strip() else projects.root() + "/")
                 auto["setting"] = False
             check()
 
@@ -758,6 +780,125 @@ class App(Adw.Application):
             self._reload_projects()
             self.toast(f"project {new} saved" if proj else f"project {new} created")
         d.connect("response", done)
+        d.present(self.win)
+
+    def apply_look(self):
+        c = self.cfg
+        a, gap = c["opacity"], c["gap"]
+        bg = settings.scheme(c["scheme"])[1]
+        accent = ""
+        if c["accent"] != "system" and hasattr(Adw, "AccentColor"):  # libadwaita >= 1.6
+            rgba = Adw.AccentColor.to_rgba(getattr(Adw.AccentColor, c["accent"].upper()))
+            accent = f":root {{ --accent-bg-color: {rgba.to_string()}; --accent-color: {rgba.to_string()}; }}"
+        self.look.load_from_string(f"""{accent}
+window, .main {{ background: alpha(#0e0f12, {a}); }}
+.sidebar-pane {{ background-color: alpha(var(--sidebar-bg-color), {a}); }}
+headerbar {{ background-color: alpha(var(--headerbar-bg-color), {a}); }}
+.tile {{ background: alpha({bg}, {a}); border-radius: {c["radius"]}px; }}
+""")
+        for prop in ("row-spacing", "column-spacing", "margin-top", "margin-bottom", "margin-start", "margin-end"):
+            self.grid.set_property(prop, gap)
+        for t in self.tiles.values():
+            t.apply_look()
+
+    def _set(self, key, value):
+        self.cfg[key] = value
+        settings.save(self.cfg)
+        self.apply_look()
+
+    def settings_dialog(self):
+        d = Adw.PreferencesDialog(title="Settings")
+        c = self.cfg
+
+        def spin(title, lo, hi, step, key, sub=None, scale=1):
+            row = Adw.SpinRow.new_with_range(lo, hi, step)
+            row.set_title(title)
+            if sub:
+                row.set_subtitle(sub)
+            row.set_value(round(c[key] * scale))
+            row.connect("notify::value", lambda r, _p: self._set(key, r.get_value() / scale if scale != 1
+                                                                  else int(r.get_value())))
+            return row
+
+        def combo(title, key, values, labels=None, sub=None):
+            row = Adw.ComboRow(title=title, model=Gtk.StringList.new(labels or values))
+            if sub:
+                row.set_subtitle(sub)
+            row.set_selected(values.index(c[key]) if c[key] in values else 0)
+            row.connect("notify::selected", lambda r, _p: self._set(key, values[r.get_selected()]))
+            return row
+
+        def switch(title, key, sub=None):
+            row = Adw.SwitchRow(title=title, active=c[key])
+            if sub:
+                row.set_subtitle(sub)
+            row.connect("notify::active", lambda r, _p: self._set(key, r.get_active()))
+            return row
+
+        def entry(title, key):
+            row = Adw.EntryRow(title=title, text=c[key], show_apply_button=True)
+            row.connect("apply", lambda r: self._set(key, r.get_text().strip()))
+            return row
+
+        def page(title, icon, groups):
+            pg = Adw.PreferencesPage(title=title, icon_name=icon, name=title.lower())
+            for gtitle, rows, desc in groups:
+                g = Adw.PreferencesGroup(title=gtitle, description=desc or "")
+                for r in rows:
+                    g.add(r)
+                pg.add(g)
+            d.add(pg)
+
+        # A list in the dialog, not Gtk.FontDialogButton: its modal chooser window slips behind the main
+        # window on Hyprland after a click outside it and then blocks all input.
+        desc = Pango.FontDescription.from_string(c["font"])
+        families = sorted({f.get_name() for f in self.win.get_pango_context().list_families() if f.is_monospace()}
+                          | {"Monospace"}, key=str.lower)
+        lower = [f.lower() for f in families]
+        fam = (desc.get_family() or "Monospace").lower()
+        if fam not in lower:
+            families.insert(0, desc.get_family())
+            lower.insert(0, fam)
+        font_row = Adw.ComboRow(title="Font", model=Gtk.StringList.new(families), enable_search=True)
+        font_row.set_selected(lower.index(fam))
+        size_row = Adw.SpinRow.new_with_range(6, 32, 1)
+        size_row.set_title("Font size")
+        size_row.set_value(desc.get_size() / Pango.SCALE or 10)
+
+        def font_changed(*_):
+            self._set("font", f"{families[font_row.get_selected()]} {int(size_row.get_value())}")
+        font_row.connect("notify::selected", font_changed)
+        size_row.connect("notify::value", font_changed)
+        accents = settings.ACCENTS
+        schemes = list(settings.SCHEMES)
+        page("Appearance", "preferences-desktop-appearance-symbolic", [
+            ("Window", [spin("Opacity", 30, 100, 5, "opacity", "In percent. The blur behind it comes from the "
+                             "compositor (Hyprland: decoration:blur)", scale=100)]
+             + ([combo("Accent color", "accent", accents, [a.capitalize() for a in accents],
+                       "Focused tile and selection")] if hasattr(Adw, "AccentColor") else []), None),
+            ("Tiles", [spin("Gap", 0, 32, 2, "gap", "Space between tiles in pixels"),
+                       spin("Corner radius", 0, 24, 2, "radius", "In pixels")], None),
+            ("Terminal", [font_row, size_row,
+                          combo("Color scheme", "scheme", schemes, [n if n != "kitty" else "Like kitty" for n in schemes],
+                                "“Like kitty” reads the colors from ~/.config/kitty/kitty.conf")], None),
+        ])
+        page("Agents", "system-users-symbolic", [
+            ("New agents", [entry("Folder for new projects", "projects_dir"),
+                            entry("Extra claude arguments, e.g. --model opus", "claude_args")],
+             "Also used by ac new and ac project add. Press Enter to apply."),
+            ("Behavior", [switch("Notify when an agent is done", "notify",
+                                 "When it goes from working to idle while this window isn't focused"),
+                          switch("Ask before ending a session", "confirm_kill")], None),
+        ])
+        groups = [("Token panel", [combo("At start", "tokens_at_start", ["last", "open", "closed"],
+                                          ["As last time", "Open", "Closed"]),
+                                    entry("TokenTracker command (empty: automatic)", "tokentracker")],
+                   "A new command is used the next time agentControl starts the server.")]
+        if stream.AVAILABLE:
+            groups.insert(0, ("Live streams", [combo("Default view", "view", ["auto", "stream", "terminal"],
+                                                     ["Auto", "Stream", "Terminal"], "For new tiles"),
+                                               spin("Max frames per second", 5, 60, 5, "max_fps")], None))
+        page("Panels", "view-dual-symbolic", groups)
         d.present(self.win)
 
     def toast(self, text):
