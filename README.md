@@ -72,6 +72,20 @@ The installer only creates symlinks into the checkout (`git pull` updates everyt
 dependencies. `./install.sh --uninstall` removes them. You can also run `bin/agentcontrol` and `bin/ac`
 straight from the checkout.
 
+Or with npm (Linux, Node 18+). It puts `agentcontrol` and `ac` on your PATH and prints what's still missing:
+
+```sh
+npm i -g agentcontrol
+```
+
+npm can't install the GTK bindings, tmux or Claude Code, so those still come from your distro and the
+[Requirements](#requirements) above. An npm install has no git checkout, so it doesn't get the update button.
+
+When you run from a git checkout (`install.sh` or `bin/agentcontrol`), the app checks `origin/master` every 30
+minutes. If it's behind, an **Update** button appears in the header. Clicking it fast-forwards the checkout
+(`git merge --ff-only`) and asks you to restart. It never touches local commits: a branch with its own commits
+gets no button. Set `AGENTCONTROL_NO_UPDATE_CHECK=1` to turn the check off.
+
 ## Use
 
 ```sh

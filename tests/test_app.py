@@ -19,7 +19,7 @@ if HAS_DISPLAY:
     from gi.repository import Adw, Gio, GLib, Gtk  # noqa: E402
 
     from agentcontrol import app as appmod  # noqa: E402
-    from agentcontrol import sessions, settings  # noqa: E402
+    from agentcontrol import sessions, settings, updates  # noqa: E402
     from agentcontrol.tokens import TokenPanel  # noqa: E402
 
 
@@ -55,6 +55,8 @@ class AppTest(unittest.TestCase):
                 os.remove(p)
         cls.token_start = mock.patch.object(TokenPanel, "start", lambda self: None)  # never spawn tokentracker
         cls.token_start.start()
+        cls.update_check = mock.patch.object(updates, "check", return_value=None)  # never fetch during the tests
+        cls.update_check.start()
         sessions.ensure_server()
         for n in ("alpha", "beta"):
             sessions.new_session(n, "~")
@@ -71,6 +73,7 @@ class AppTest(unittest.TestCase):
         for s in sessions.list_sessions():
             sessions.kill(s.name)
         cls.token_start.stop()
+        cls.update_check.stop()
 
     def setUp(self):
         a = self.app
@@ -96,6 +99,44 @@ class AppTest(unittest.TestCase):
     def test_window_and_tiles(self):
         self.assertTrue(self.app.win.get_visible())
         self.assertEqual(set(self.app.tiles), {"alpha", "beta"})
+
+    def test_update_button_shows_only_when_behind(self):
+        a = self.app
+        a._show_update(None)
+        pump(0.05)
+        self.assertFalse(a.update_btn.get_visible())
+        a._show_update(updates.Update(behind=2, local="aaa1111", remote="bbb2222"))
+        pump(0.05)
+        self.assertTrue(a.update_btn.get_visible())
+        self.assertIn("2 new commits", a.update_btn.get_tooltip_text())
+        a._show_update(None)
+        pump(0.05)
+        self.assertFalse(a.update_btn.get_visible())
+
+    def test_update_button_applies_and_hides(self):
+        a = self.app
+        a._show_update(updates.Update(behind=1, local="aaa1111", remote="bbb2222"))
+        pump(0.05)
+        with mock.patch.object(updates, "apply", return_value="bbb2222") as apply:
+            a.update_btn.emit("clicked")
+            pump(0.5)
+        apply.assert_called_once()
+        self.assertFalse(a.update_btn.get_visible())
+        self.assertTrue(a.update_btn.get_sensitive())
+        self.assertIsNone(a.update)
+
+    def test_update_button_recovers_from_failure(self):
+        a = self.app
+        a._show_update(updates.Update(behind=1, local="aaa1111", remote="bbb2222"))
+        pump(0.05)
+        with mock.patch.object(updates, "apply", side_effect=RuntimeError("Not possible to fast-forward")):
+            a.update_btn.emit("clicked")
+            pump(0.5)
+        self.assertTrue(a.update_btn.get_visible())
+        self.assertTrue(a.update_btn.get_sensitive())
+        self.assertEqual(a.update_btn.get_label(), "Update")
+        a._show_update(None)
+        pump(0.05)
 
     def test_settings_action_and_shortcut(self):
         self.assertIn("<Control>comma", self.app.get_accels_for_action("app.settings"))
