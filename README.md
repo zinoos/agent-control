@@ -4,7 +4,7 @@
     <img src="docs/logo/lockup-animated.svg" alt="Agent Control" width="440">
   </picture>
 </p>
-
+<p align="center">V1 Free and Open Source</p>
 <p align="center">
   <b>Every <a href="https://docs.anthropic.com/en/docs/claude-code">Claude Code</a> agent at a glance.</b><br>
   Watch them work, type into any of them, and see their desktops live.
