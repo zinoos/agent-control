@@ -35,6 +35,11 @@ gi.require_version("Gtk", "4.0"); gi.require_version("Adw", "1"); gi.require_ver
 from gi.repository import Adw, Gtk, Vte  # noqa
 EOF
 
+optional=()
+"${AGENTCONTROL_PYTHON:-/usr/bin/python3}" -c 'import gi; gi.require_version("WebKit", "6.0")' 2>/dev/null \
+  || optional+=("WebKitGTK 6.0 bindings (token panel)")
+command -v tokentracker >/dev/null || command -v npx >/dev/null || optional+=("tokentracker or Node's npx (token panel)")
+
 link "$here/bin/ac" "$bin/ac"
 link "$here/bin/agentcontrol" "$bin/agentcontrol"
 link "$here/agentcontrol.desktop" "$apps/agentcontrol.desktop"
@@ -46,5 +51,9 @@ if [ ${#missing[@]} -gt 0 ]; then
   echo >&2
   echo "Still missing (see README → Requirements):" >&2
   printf '  - %s\n' "${missing[@]}" >&2
+fi
+if [ ${#optional[@]} -gt 0 ]; then
+  echo "Optional, not found:" >&2
+  printf '  - %s\n' "${optional[@]}" >&2
 fi
 echo "Done. Run: agentcontrol   (or: ac new my-agent -p \"hello\")"

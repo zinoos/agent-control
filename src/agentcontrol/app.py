@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import math
 import os
+import signal
 import sys
 import threading
 
@@ -70,6 +71,10 @@ class App(Adw.Application):
         self.tokens_open = False
         self.tokens_width = 1000
         self._load_state()
+        # Quit cleanly on signals too, so "shutdown" runs and stops the token panel's server.
+        self.connect("shutdown", lambda *_: self.tokens.stop() if hasattr(self, "tokens") else None)
+        for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+            GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, sig, lambda *_: self.quit() or GLib.SOURCE_REMOVE)
 
     # ------------------------------------------------------------ state file
 
@@ -472,19 +477,24 @@ class App(Adw.Application):
             return
         self.tokens_open = show
         self._save_state()
+        self._placing = show  # showing the panel moves the divider to a default spot: not a user drag
         self.tokens.set_visible(show)
         if show:
             self.tokens.start()
             GLib.idle_add(self._place_tokens)
-            self.tokens.term.grab_focus()
+            self.tokens.focus()
 
-    def _place_tokens(self):
-        w = self.tokens_paned.get_width()
-        if w <= 0:
-            return True  # not allocated yet
+    def _place_tokens(self, last=-1, tries=40):
+        # Repeat until the paned's width settles: the window can still grow after the first allocation (e.g.
+        # when the tiler sizes it), and the extra space would all go to the grid.
         self._placing = True
-        self.tokens_paned.set_position(max(200, w - min(self.tokens_width, int(w * 0.6))))  # leave the grid room
-        self._placing = False
+        w = self.tokens_paned.get_width()
+        if w > 0:
+            self.tokens_paned.set_position(max(200, w - min(self.tokens_width, int(w * 0.6))))  # leave the grid room
+        if (w <= 0 or w != last) and tries > 0:
+            GLib.timeout_add(50, self._place_tokens, w, tries - 1)
+        else:
+            self._placing = False
         return False
 
     def _tokens_moved(self, paned, _p):

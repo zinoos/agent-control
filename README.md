@@ -12,8 +12,8 @@ Native GTK 4 / libadwaita + VTE, written in Python. Linux only.
   message box. Focus one, or grid them in auto / 1–4 columns.
 - **`ac` CLI**: start, message, read and wait for agents from any shell, including from another agent.
 - **Projects**: named working directories; agents are grouped by the project they run in.
-- **Token usage panel** (optional): the [tokscale](https://github.com/junhoyeo/tokscale) TUI on the right
-  side of the window: usage per day, model, project and session, plus subscription quotas.
+- **Token usage panel** (optional): the [TokenTracker](https://github.com/xiufengsun/TokenTracker) dashboard
+  on the right side of the window: usage and cost per day, model, project and session, plus subscription limits.
 - **Live desktop streams** (optional): with [hypr-computer](#live-desktop-streams-optional) agent desktops,
   a tile streams the agent's screen with its last action as a ticker.
 
@@ -33,7 +33,8 @@ Agents keep running when the window closes; `ac attach NAME` puts any terminal i
 | Debian / Ubuntu (24.04+) | `sudo apt install tmux python3-gi gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-vte-3.91` |
 | Arch | `sudo pacman -S tmux python-gobject gtk4 libadwaita vte4` |
 
-Optional: Node.js (`npx`) or a global `tokscale` for the token panel.
+Optional, for the token panel: WebKitGTK 6.0 (Fedora `webkitgtk6.0`, Debian/Ubuntu `gir1.2-webkit-6.0`, Arch
+`webkitgtk-6.0`) and Node.js 20+ (`npx`) or a global `tokentracker`.
 
 ## Install
 
@@ -102,8 +103,7 @@ Everything works without configuration. Files and environment variables, all opt
 | `AGENTCONTROL_PROJECTS_DIR` | `~/projects` | where new projects go when no directory is given |
 | `AGENTCONTROL_FONT` | `monospace 10` | terminal font (Pango syntax, e.g. `JetBrains Mono 11`) |
 | `AGENTCONTROL_PYTHON` | `/usr/bin/python3` | the Python that has PyGObject |
-| `AGENTCONTROL_TOKSCALE` | `tokscale`, else `npx -y tokscale@latest` | command for the token panel |
-| `AGENTCONTROL_TOKEN_MONITOR` | `token-monitor` if on PATH | desktop app the panel's "open" button launches |
+| `AGENTCONTROL_TOKENTRACKER` | `tokentracker`, else `npx -y tokentracker-cli@latest` | command for the token panel |
 | `HYPR_COMPUTER_SRC` | `../hypr-computer/src` next to this repo | where to find hypr-computer for streams |
 
 `projects.json` looks like this:
@@ -119,15 +119,19 @@ Everything works without configuration. Files and environment variables, all opt
 
 ## Token usage panel
 
-The **Tokens** button opens [tokscale](https://github.com/junhoyeo/tokscale)'s TUI in a terminal on the
-right: Overview, Usage (subscription quotas), Models, Daily, Hourly, Monthly, Sessions, Projects, Stats and
-Agents, across Claude Code, Codex, Cursor, OpenCode and many other clients. Use ←→ or Tab to switch
-views and `r` to rescan. It reads your local session logs only, unless you set up tokscale's own sync.
+The **Tokens** button opens the [TokenTracker](https://github.com/xiufengsun/TokenTracker) dashboard on the
+right: token and cost trends, models, projects, sessions and subscription limits across Claude Code, Codex,
+Cursor, OpenCode and 40-odd other clients. It's parsed from your local logs; nothing is uploaded unless you
+opt into TokenTracker's cloud sync or leaderboard. Links that leave the dashboard open in your browser, and
+the panel's browser button opens the dashboard itself there.
 
-agentControl runs `tokscale tui` from your PATH, or `npx -y tokscale@latest tui` if Node is installed
-(`npm i -g tokscale` makes it start faster). If the
-[Token Monitor](https://github.com/Javis603/token-monitor) desktop app is installed with a `token-monitor`
-launcher on PATH, the panel also gets a button that opens it.
+If a TokenTracker server is already running on `127.0.0.1:7680` (its desktop app, or `tokentracker serve`),
+the panel uses it. Otherwise it starts `tokentracker serve --no-open` from your PATH, or
+`npx -y tokentracker-cli@latest serve --no-open` if Node is installed (`npm i -g tokentracker-cli` makes it
+start faster), and stops it again when agentControl quits. On its very first run TokenTracker sets itself
+up: it scans all your logs and adds its sync hooks to the tools it finds (for Claude Code, a `SessionEnd`
+hook in `~/.claude/settings.json`). Run `tokentracker init` yourself beforehand to see and confirm that,
+and `tokentracker uninstall` to undo it.
 
 ## Live desktop streams (optional)
 
