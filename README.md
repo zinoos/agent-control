@@ -1,22 +1,46 @@
-# agentControl
+<p align="center">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="docs/logo/lockup-animated-dark.svg">
+    <img src="docs/logo/lockup-animated.svg" alt="Agent Control" width="440">
+  </picture>
+</p>
+<p align="center">V1 Free and Open Source</p>
+<p align="center">
+  <b>Every <a href="https://docs.anthropic.com/en/docs/claude-code">Claude Code</a> agent at a glance.</b><br>
+  Watch them work, type into any of them, and see their desktops live.
+</p>
 
-Every [Claude Code](https://docs.anthropic.com/en/docs/claude-code) agent at a glance. agentControl runs your
-agents as Claude Code sessions in a dedicated tmux server and shows each one as a tile: its terminal, which you type
-into directly, and (optionally) a live stream of the agent's own desktop while it uses one. A tmux-like grid puts several agents on one screen, projects group them in the sidebar, and a
-token panel shows what they cost.
+<p align="center">
+  <a href="#install">Install</a> ·
+  <a href="#use">Use</a> ·
+  <a href="#live-desktop-streams-optional">Live streams</a> ·
+  <a href="#for-agents">For agents</a> ·
+  <a href="#how-it-works">How it works</a>
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/grid.png" alt="Agent Control: five Claude Code agents in a grid, grouped by project, one streaming its desktop live">
+</p>
+
+Agent Control runs your agents as Claude Code sessions in a dedicated tmux server and shows each one as a
+tile: its terminal, which you type into directly, and (optionally) a live stream of the agent's own desktop
+while it uses one. A tmux-like grid puts several agents on one screen, projects group them in the sidebar,
+and a token panel shows what they cost.
 
 Native GTK 4 / libadwaita + VTE, written in Python. Linux only.
 
-- **Tiles**: each agent's Claude Code terminal (type straight into it) and its state (working / idle).
-  Focus one, or grid them in auto / 1–4 columns.
+- **Tiles**: each agent's Claude Code terminal (type straight into it) and its state, working or idle. Focus one, or grid them in auto / 1–4 columns.
 - **`ac` CLI**: start, message, read and wait for agents from any shell, including from another agent.
-- **Projects**: named working directories; agents are grouped by the project they run in.
-- **Token usage panel** (optional): the [TokenTracker](https://github.com/xiufengsun/TokenTracker) dashboard
-  on the right side of the window: usage and cost per day, model, project and session, plus subscription limits.
-- **Live desktop streams** (optional): with [hypr-computer](#live-desktop-streams-optional) agent desktops,
-  a tile streams the agent's screen with its last action as a ticker.
+- **Projects**: named working directories. Agents are grouped by the project they run in.
+- **Live desktop streams**: with [hypr-computer](#live-desktop-streams-optional) agent desktops, a tile streams the agent's screen with its last action as a ticker.
+- **Token usage panel**: the [TokenTracker](https://github.com/xiufengsun/TokenTracker) dashboard beside your agents: usage and cost per day, model, project and session, plus subscription limits.
 
 Agents keep running when the window closes; `ac attach NAME` puts any terminal into an agent's session.
+
+<p align="center">
+  <img src="docs/screenshots/focus.png" alt="One agent focused: its live desktop stream shows Firefox, its Claude Code terminal on the right">
+  <br><sub>Focus an agent to watch its desktop full size while you read along in its terminal.</sub>
+</p>
 
 ## Requirements
 
@@ -40,7 +64,7 @@ Optional, for the token panel: WebKitGTK 6.0 (Fedora `webkitgtk6.0`, Debian/Ubun
 ```sh
 git clone https://github.com/zinoos/agent-control.git ~/projects/agent-control
 cd ~/projects/agent-control
-./install.sh            # links ac + agentcontrol into ~/.local/bin, adds the app-launcher entry
+./install.sh            # links ac + agentcontrol into ~/.local/bin, adds the app-launcher entry and icon
 ./install.sh --skill    # same, plus the agent-control skill for Claude Code (~/.claude/skills)
 ```
 
@@ -99,7 +123,7 @@ In the app:
     TokenTracker command
 - Type straight into a tile's terminal; `ac send` messages an agent from any shell
 
-Only sessions started through agentControl (`ac new`, the + button or resume) appear; a `claude` started in
+Only sessions started through Agent Control (`ac new`, the + button or resume) appear; a `claude` started in
 a plain terminal doesn't.
 
 ## Configuration
@@ -135,8 +159,8 @@ dbus-run-session -- python3 -m unittest discover -s tests -t . -v
 ```
 
 The tests use their own HOME, settings and tmux server and a fake `claude`, so they never touch your agents.
-The GUI tests need a display (they're skipped without one); CI runs everything on each pull request in a Fedora
-container under Xvfb (`.github/workflows/tests.yml`).
+The GUI tests need a display (they're skipped without one). Run them before every push (see `AGENTS.md`);
+`.github/workflows/tests.yml` runs the same suite in a Fedora container under Xvfb where GitHub Actions is on.
 
 ## Token usage panel
 
@@ -149,14 +173,14 @@ the panel's browser button opens the dashboard itself there.
 If a TokenTracker server is already running on `127.0.0.1:7680` (its desktop app, or `tokentracker serve`),
 the panel uses it. Otherwise it starts `tokentracker serve --no-open` from your PATH, or
 `npx -y tokentracker-cli@latest serve --no-open` if Node is installed (`npm i -g tokentracker-cli` makes it
-start faster), and stops it again when agentControl quits. On its very first run TokenTracker sets itself
+start faster), and stops it again when Agent Control quits. On its very first run TokenTracker sets itself
 up: it scans all your logs and adds its sync hooks to the tools it finds (for Claude Code, a `SessionEnd`
 hook in `~/.claude/settings.json`). Run `tokentracker init` yourself beforehand to see and confirm that,
 and `tokentracker uninstall` to undo it.
 
 ## Live desktop streams (optional)
 
-agentControl can show what an agent sees when it uses a computer-use MCP server that gives each agent its
+Agent Control can show what an agent sees when it uses a computer-use MCP server that gives each agent its
 own desktop: [hypr-computer](https://github.com/zinoos/hypr-computer), a Hyprland MCP server where each
 agent gets a nested Hyprland session. Without it, tiles show terminals only and the stream controls are
 hidden.
@@ -199,4 +223,4 @@ file at the same `ac` commands.
 
 ## License
 
-[MIT](LICENSE)
+[MIT](LICENSE). The logo files are in [`docs/logo`](docs/logo).
