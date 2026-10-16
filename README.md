@@ -128,6 +128,16 @@ Everything works without configuration. Files and environment variables, all opt
 }
 ```
 
+## Tests
+
+```sh
+dbus-run-session -- python3 -m unittest discover -s tests -t . -v
+```
+
+The tests use their own HOME, settings and tmux server and a fake `claude`, so they never touch your agents.
+The GUI tests need a display (they're skipped without one); CI runs everything on each pull request in a Fedora
+container under Xvfb (`.github/workflows/tests.yml`).
+
 ## Token usage panel
 
 **Ctrl+Shift+T** opens the [TokenTracker](https://github.com/xiufengsun/TokenTracker) dashboard on the

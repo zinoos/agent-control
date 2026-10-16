@@ -27,6 +27,11 @@ DEFAULTS = {
     "tokentracker": os.environ.get("AGENTCONTROL_TOKENTRACKER", ""),
 }
 
+# Allowed values; anything else in settings.json falls back to the default.
+RANGES = {"opacity": (0.3, 1.0), "gap": (0, 32), "radius": (0, 24), "max_fps": (5, 60)}
+ACCENTS = ["system", "blue", "teal", "green", "yellow", "orange", "red", "pink", "purple", "slate"]
+CHOICES = {"accent": ACCENTS, "view": ["auto", "stream", "terminal"], "tokens_at_start": ["last", "open", "closed"]}
+
 # name -> (foreground, background, 16 palette colours)
 SCHEMES = {
     "agentControl": ("#e9ecef", "#14161a",
@@ -48,9 +53,23 @@ SCHEMES = {
 def load() -> dict:
     try:
         with open(PATH) as f:
-            return DEFAULTS | json.load(f)
+            raw = json.load(f)
     except (OSError, ValueError):
-        return dict(DEFAULTS)
+        raw = {}
+    out = dict(DEFAULTS)
+    for k, v in (raw.items() if isinstance(raw, dict) else ()):
+        if k in out and _valid(k, v):
+            out[k] = min(max(v, RANGES[k][0]), RANGES[k][1]) if k in RANGES else v
+    return out
+
+
+def _valid(key, v) -> bool:
+    d = DEFAULTS[key]
+    if isinstance(d, bool) or isinstance(v, bool):
+        return isinstance(d, bool) and isinstance(v, bool)
+    if isinstance(d, (int, float)):
+        return isinstance(v, (int, float)) and v == v  # v == v rules out NaN
+    return isinstance(v, str) and (key not in CHOICES or v in CHOICES[key])
 
 
 def save(s: dict):
@@ -97,13 +116,3 @@ def kitty_scheme(path: str = "~/.config/kitty/kitty.conf"):
     read(path)
     return (vals["foreground"], vals["background"], [vals[f"color{i}"] for i in range(16)]) if found else None
 
-
-if __name__ == "__main__":
-    import tempfile
-    with tempfile.TemporaryDirectory() as d:
-        open(f"{d}/theme.conf", "w").write("foreground #111111\nbackground #222222\ncolor1 #333333\n")
-        open(f"{d}/kitty.conf", "w").write("include theme.conf\ncolor1 #444444\ncolor2 nope\n")
-        fg, bg, pal = kitty_scheme(f"{d}/kitty.conf")
-        assert (fg, bg, pal[1], pal[2]) == ("#111111", "#222222", "#444444", SCHEMES["agentControl"][2][2])
-        assert kitty_scheme(f"{d}/missing.conf") is None
-    print("ok")

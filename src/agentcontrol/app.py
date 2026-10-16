@@ -779,13 +779,13 @@ class App(Adw.Application):
         a, gap = c["opacity"], c["gap"]
         bg = settings.scheme(c["scheme"])[1]
         accent = ""
-        if c["accent"] != "system":
+        if c["accent"] != "system" and hasattr(Adw, "AccentColor"):  # libadwaita >= 1.6
             rgba = Adw.AccentColor.to_rgba(getattr(Adw.AccentColor, c["accent"].upper()))
             accent = f":root {{ --accent-bg-color: {rgba.to_string()}; --accent-color: {rgba.to_string()}; }}"
         self.look.load_from_string(f"""{accent}
 window, .main {{ background: alpha(#0e0f12, {a}); }}
-.sidebar-pane {{ background: alpha(var(--sidebar-bg-color), {a}); }}
-headerbar {{ background: alpha(var(--headerbar-bg-color), {a}); }}
+.sidebar-pane {{ background-color: alpha(var(--sidebar-bg-color), {a}); }}
+headerbar {{ background-color: alpha(var(--headerbar-bg-color), {a}); }}
 .tile {{ background: alpha({bg}, {a}); border-radius: {c["radius"]}px; }}
 """)
         for prop in ("row-spacing", "column-spacing", "margin-top", "margin-bottom", "margin-start", "margin-end"):
@@ -861,13 +861,13 @@ headerbar {{ background: alpha(var(--headerbar-bg-color), {a}); }}
             self._set("font", f"{families[font_row.get_selected()]} {int(size_row.get_value())}")
         font_row.connect("notify::selected", font_changed)
         size_row.connect("notify::value", font_changed)
-        accents = ["system", "blue", "teal", "green", "yellow", "orange", "red", "pink", "purple", "slate"]
+        accents = settings.ACCENTS
         schemes = list(settings.SCHEMES)
         page("Appearance", "preferences-desktop-appearance-symbolic", [
             ("Window", [spin("Opacity", 30, 100, 5, "opacity", "In percent. The blur behind it comes from the "
-                             "compositor (Hyprland: decoration:blur)", scale=100),
-                        combo("Accent color", "accent", accents, [a.capitalize() for a in accents],
-                              "Focused tile and selection")], None),
+                             "compositor (Hyprland: decoration:blur)", scale=100)]
+             + ([combo("Accent color", "accent", accents, [a.capitalize() for a in accents],
+                       "Focused tile and selection")] if hasattr(Adw, "AccentColor") else []), None),
             ("Tiles", [spin("Gap", 0, 32, 2, "gap", "Space between tiles in pixels"),
                        spin("Corner radius", 0, 24, 2, "radius", "In pixels")], None),
             ("Terminal", [font_row, size_row,

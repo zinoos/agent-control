@@ -167,6 +167,8 @@ def new_session(name: str | None = None, cwd: str | None = None, prompt: str | N
     if name in existing:
         raise RuntimeError(f"a session called {name!r} already exists")
     cwd = os.path.expanduser(cwd or "~")
+    if not os.path.isdir(cwd):
+        raise RuntimeError(f"no such directory: {cwd}")  # tmux would silently start it in ~ instead
     cmd = ["claude", *shlex.split(settings.get("claude_args")), *(claude_args or [])]
     if prompt:
         cmd.append(prompt)
