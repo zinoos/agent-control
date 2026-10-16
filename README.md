@@ -86,7 +86,7 @@ In the app:
   session that's still running is focused instead (or reported, if it runs in another terminal)
 - **Click** an agent in the sidebar, or double-click a tile header: focus it; again (or **Ctrl+G**): back to the grid
 - **Alt+1…9**: focus tile N. **Sidebar button** (top left of the grid) **/ Ctrl+B**: hide or show the agent list
-- **Tokens button (top right) / Ctrl+Shift+T**: the token usage panel (see below). Drag the divider to resize
+- **Ctrl+Shift+T**: the token usage panel (see below). Drag the divider to resize
 - **Grid button**: auto grid or a fixed 1-4 columns. The eye button hides or shows an agent in the grid
 - Per tile: **Stop** = Esc, **×** hides the tile (the session keeps running). With streams available, the
   **video button** cycles auto / stream / terminal
@@ -122,7 +122,7 @@ Everything works without configuration. Files and environment variables, all opt
 
 ## Token usage panel
 
-The **Tokens** button opens the [TokenTracker](https://github.com/xiufengsun/TokenTracker) dashboard on the
+**Ctrl+Shift+T** opens the [TokenTracker](https://github.com/xiufengsun/TokenTracker) dashboard on the
 right: token and cost trends, models, projects, sessions and subscription limits across Claude Code, Codex,
 Cursor, OpenCode and 40-odd other clients. It's parsed from your local logs; nothing is uploaded unless you
 opt into TokenTracker's cloud sync or leaderboard. Links that leave the dashboard open in your browser, and

@@ -113,8 +113,6 @@ class App(Adw.Application):
         prov.load_from_string(CSS)
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), prov,
                                                   Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
-        Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(
-            os.path.join(os.path.dirname(__file__), "..", "..", "icons"))
         sessions.ensure_server()
 
         self.win = Adw.ApplicationWindow(application=self, title="agentControl")
@@ -160,10 +158,6 @@ class App(Adw.Application):
         content_head.pack_start(sidebar_btn)
         content_head.pack_start(layout_btn)
         content_head.set_title_widget(self.layout_label)
-        self.tokens_btn = Gtk.ToggleButton(child=Adw.ButtonContent(icon_name="ac-tokens-symbolic", label="Tokens"),
-                                           tooltip_text="Token usage stats (Ctrl+Shift+T)")
-        self.tokens_btn.connect("toggled", lambda b: self.toggle_tokens(b.get_active()))
-        content_head.pack_end(self.tokens_btn)
         content_tb.add_top_bar(content_head)
         self.tokens = TokenPanel(self)
         self.tokens.set_margin_top(8)
@@ -207,7 +201,7 @@ class App(Adw.Application):
         self._build_groups()
         self.refresh()
         if self.tokens_open:
-            self.tokens_btn.set_active(True)
+            self.toggle_tokens(True)
         GLib.timeout_add(1000, self._tick)
 
     # ------------------------------------------------------------ polling
@@ -487,9 +481,6 @@ class App(Adw.Application):
     # ------------------------------------------------------------ token panel
 
     def toggle_tokens(self, show: bool):
-        if self.tokens_btn.get_active() != show:
-            self.tokens_btn.set_active(show)  # re-enters via "toggled"
-            return
         self.tokens_open = show
         self._save_state()
         self._placing = show  # showing the panel moves the divider to a default spot: not a user drag
