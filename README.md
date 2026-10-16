@@ -81,16 +81,19 @@ In the app:
 - **folder button / Ctrl+Shift+N**: new project. The directory follows the name (`~/projects/<name>`)
   until you change it, and is created if it doesn't exist
 - **+ / Ctrl+N**: new agent (project, name, directory, first instruction)
+- **Clock button / Ctrl+Shift+R**: resume a past Claude Code session. Search your recent sessions by title,
+  prompt or folder and pick one: it continues in a new agent (`claude --resume`) in its original folder. A
+  session that's still running is focused instead (or reported, if it runs in another terminal)
 - **Click** an agent in the sidebar, or double-click a tile header: focus it; again (or **Ctrl+G**): back to the grid
-- **Alt+1…9**: focus tile N. **Ctrl+B**: toggle the sidebar
+- **Alt+1…9**: focus tile N. **Sidebar button** (top left of the grid) **/ Ctrl+B**: hide or show the agent list
 - **Tokens button (top right) / Ctrl+Shift+T**: the token usage panel (see below). Drag the divider to resize
 - **Grid button**: auto grid or a fixed 1-4 columns. The eye button hides or shows an agent in the grid
 - Per tile: **Stop** = Esc, **×** hides the tile (the session keeps running). With streams available, the
   **video button** cycles auto / stream / terminal
 - Type straight into a tile's terminal, or use the message box under it
 
-Only sessions started through agentControl (`ac new` or the + button) appear; a `claude` started in a
-plain terminal doesn't.
+Only sessions started through agentControl (`ac new`, the + button or resume) appear; a `claude` started in
+a plain terminal doesn't.
 
 ## Configuration
 

@@ -14,9 +14,9 @@ import gi
 
 gi.require_version("Gtk", "4.0")
 gi.require_version("Adw", "1")
-from gi.repository import Adw, Gdk, Gio, GLib, Gtk  # noqa: E402
+from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk  # noqa: E402
 
-from . import projects, sessions  # noqa: E402
+from . import history, projects, sessions  # noqa: E402
 from .tile import SessionTile  # noqa: E402
 from .tokens import TokenPanel  # noqa: E402
 
@@ -51,6 +51,8 @@ window, .main { background: #0e0f12; }
                  padding: 14px 12px 8px 12px; font-size: 13px; }
 .chat-row { padding: 6px; border-top: 1px solid alpha(white, 0.05); }
 .empty-title { font-size: 22px; font-weight: 800; }
+.running-pill { background: alpha(#51cf66, 0.2); color: #51cf66; font-weight: 700; font-size: 10px;
+                border-radius: 4px; padding: 1px 6px; }
 """
 
 
@@ -70,6 +72,7 @@ class App(Adw.Application):
         self.sessions: dict[str, sessions.Session] = {}
         self.tokens_open = False
         self.tokens_width = 1000
+        self.sidebar_shown = True
         self._load_state()
         # Quit cleanly on signals too, so "shutdown" runs and stops the token panel's server.
         self.connect("shutdown", lambda *_: self.tokens.stop() if hasattr(self, "tokens") else None)
@@ -88,6 +91,7 @@ class App(Adw.Application):
             self.collapsed = set(st.get("collapsed", []))
             self.tokens_open = bool(st.get("tokens_open", False))
             self.tokens_width = int(st.get("tokens_width", 1000))
+            self.sidebar_shown = bool(st.get("sidebar", True))
         except (OSError, ValueError):
             pass
 
@@ -96,7 +100,7 @@ class App(Adw.Application):
         with open(STATE, "w") as f:
             json.dump({"hidden": sorted(self.hidden), "cols": self.cols, "order": self.order,
                        "collapsed": sorted(self.collapsed), "tokens_open": self.tokens_open,
-                       "tokens_width": self.tokens_width}, f)
+                       "tokens_width": self.tokens_width, "sidebar": self.sidebar_shown}, f)
 
     # ------------------------------------------------------------ UI
 
@@ -129,6 +133,10 @@ class App(Adw.Application):
         proj_btn = Gtk.Button(icon_name="folder-new-symbolic", tooltip_text="New project (Ctrl+Shift+N)")
         proj_btn.connect("clicked", lambda *_: self.project_dialog())
         side_head.pack_start(proj_btn)
+        resume_btn = Gtk.Button(icon_name="document-open-recent-symbolic",
+                                tooltip_text="Resume a past session (Ctrl+Shift+R)")
+        resume_btn.connect("clicked", lambda *_: self.resume_dialog())
+        side_head.pack_start(resume_btn)
         side_tb.add_top_bar(side_head)
         side_tb.set_content(side_scroll)
 
@@ -148,6 +156,8 @@ class App(Adw.Application):
         for label, n in (("Auto grid", 0), ("1 column", 1), ("2 columns", 2), ("3 columns", 3), ("4 columns", 4)):
             menu.append(label, f"app.cols({n})")
         layout_btn.set_menu_model(menu)
+        sidebar_btn = Gtk.ToggleButton(icon_name="sidebar-show-symbolic", tooltip_text="Show / hide the agent list (Ctrl+B)")
+        content_head.pack_start(sidebar_btn)
         content_head.pack_start(layout_btn)
         content_head.set_title_widget(self.layout_label)
         self.tokens_btn = Gtk.ToggleButton(child=Adw.ButtonContent(icon_name="ac-tokens-symbolic", label="Tokens"),
@@ -167,7 +177,11 @@ class App(Adw.Application):
         self.toasts = Adw.ToastOverlay(child=self.tokens_paned)
         content_tb.set_content(self.toasts)
 
-        split = Adw.OverlaySplitView(sidebar=side_tb, content=content_tb, min_sidebar_width=240, max_sidebar_width=300)
+        split = Adw.OverlaySplitView(sidebar=side_tb, content=content_tb, min_sidebar_width=240, max_sidebar_width=300,
+                                     show_sidebar=self.sidebar_shown)
+        split.bind_property("show-sidebar", sidebar_btn, "active",
+                            GObject.BindingFlags.BIDIRECTIONAL | GObject.BindingFlags.SYNC_CREATE)
+        split.connect("notify::show-sidebar", self._sidebar_toggled)
         self.win.set_content(split)
 
         act = Gio.SimpleAction.new_stateful("cols", GLib.VariantType.new("i"), GLib.Variant("i", self.cols))
@@ -175,6 +189,7 @@ class App(Adw.Application):
         self.add_action(act)
         for name, keys, cb in (("new", ["<Control>n"], lambda *_: self.new_dialog()),
                                ("new-project", ["<Control><Shift>n"], lambda *_: self.project_dialog()),
+                               ("resume", ["<Control><Shift>r"], lambda *_: self.resume_dialog()),
                                ("grid", ["<Control>g"], lambda *_: self.toggle_focus(None)),
                                ("tokens", ["<Control><Shift>t"], lambda *_: self.toggle_tokens(not self.tokens_open)),
                                ("sidebar", ["<Control>b"], lambda *_: split.set_show_sidebar(not split.get_show_sidebar()))):
@@ -559,6 +574,101 @@ class App(Adw.Application):
                 self.toast(str(ex))
         d.connect("response", done)
         d.present(self.win)
+
+    def _sidebar_toggled(self, split, _p):
+        # A narrow window collapses the sidebar into an overlay by itself; only remember the user's choice.
+        if not split.get_collapsed() and split.get_show_sidebar() != self.sidebar_shown:
+            self.sidebar_shown = split.get_show_sidebar()
+            self._save_state()
+
+    def resume_dialog(self):
+        """Pick a past Claude Code session and continue it in a new agent (claude --resume)."""
+        d = Adw.Dialog(title="Resume a session", content_width=640, content_height=620)
+        tb = Adw.ToolbarView()
+        tb.add_top_bar(Adw.HeaderBar())
+        search = Gtk.SearchEntry(placeholder_text="Search titles, prompts and folders", margin_start=12,
+                                 margin_end=12, margin_bottom=6)
+        tb.add_top_bar(search)
+        lb = Gtk.ListBox(selection_mode=Gtk.SelectionMode.NONE, margin_start=12, margin_end=12, margin_bottom=12,
+                         valign=Gtk.Align.START)
+        lb.add_css_class("boxed-list")
+        stack = Gtk.Stack()
+        stack.add_named(Gtk.Spinner(spinning=True, halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER,
+                                    width_request=32, height_request=32), "loading")
+        stack.add_named(Gtk.ScrolledWindow(child=lb, vexpand=True, hscrollbar_policy=Gtk.PolicyType.NEVER), "list")
+        stack.add_named(Adw.StatusPage(icon_name="document-open-recent-symbolic", title="No past sessions",
+                                       description="Claude Code sessions show up here once they have a prompt."),
+                        "empty")
+        tb.set_content(stack)
+        d.set_child(tb)
+
+        def matches(row):
+            q = search.get_text().strip().lower()
+            return not q or all(w in row.haystack for w in q.split())
+        lb.set_filter_func(matches)
+        search.connect("search-changed", lambda *_: lb.invalidate_filter())
+
+        def first_visible():
+            row = lb.get_first_child()
+            while row and not (row.get_child_visible() and matches(row)):
+                row = row.get_next_sibling()
+            return row
+        search.connect("activate", lambda *_: (r := first_visible()) and r.activate())
+
+        def chosen(row):
+            d.close()
+            self._resume(row.past)
+
+        def fill(past):
+            for p in past:
+                sub = f"{p.short_cwd} · {p.when}"
+                if p.first_prompt != p.title:
+                    sub += f" · {p.first_prompt}"
+                row = Adw.ActionRow(title=GLib.markup_escape_text(p.title[:200]),
+                                    subtitle=GLib.markup_escape_text(sub[:300]), activatable=True,
+                                    title_lines=1, subtitle_lines=1, tooltip_text=p.first_prompt[:600])
+                if p.pid:
+                    pill = Gtk.Label(label="RUNNING", valign=Gtk.Align.CENTER)
+                    pill.add_css_class("running-pill")
+                    row.add_suffix(pill)
+                row.add_suffix(Gtk.Image(icon_name="go-next-symbolic"))
+                row.past = p
+                row.haystack = f"{p.title} {p.first_prompt} {p.short_cwd}".lower()
+                row.connect("activated", chosen)
+                lb.append(row)
+            stack.set_visible_child_name("list" if past else "empty")
+            return False
+
+        threading.Thread(target=lambda: GLib.idle_add(fill, history.list_past()), daemon=True).start()
+        d.present(self.win)
+        search.grab_focus()
+
+    def _resume(self, p: history.PastSession):
+        if p.pid:
+            # Already open: show its tile if it runs in agentControl, rather than a second copy of the session.
+            mine = next((s for s in self.sessions.values()
+                         if s.pane_pid == p.pid or s.pane_pid in sessions._ancestors(p.pid)), None)
+            if mine:
+                if mine.name in self.hidden:
+                    self.set_shown(mine.name, True)
+                if self.focus != mine.name:
+                    self.toggle_focus(mine.name)
+            else:
+                self.toast(f"that session is already running in another terminal (pid {p.pid})")
+            return
+        if not os.path.isdir(p.cwd):
+            self.toast(f"its folder is gone: {p.short_cwd}")
+            return
+        proj = projects.match(p.cwd, self.projects)
+        base = projects.slug(" ".join(p.title.split()[:4]))[:28].strip("-") or "resumed"
+        taken = set(self.sessions)
+        name = base if base not in taken else next(f"{base}-{i}" for i in range(2, 1000) if f"{base}-{i}" not in taken)
+        try:
+            n = sessions.new_session(name, p.cwd, None, ["--resume", p.id], project=proj.name if proj else None)
+            self.refresh()
+            self.toast(f"resumed as {n}")
+        except Exception as ex:
+            self.toast(str(ex))
 
     def project_dialog(self, proj: projects.Project | None = None):
         """New project, or edit one: a name plus the directory its agents start in (created if missing)."""
