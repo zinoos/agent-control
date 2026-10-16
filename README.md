@@ -6,6 +6,7 @@
 </p>
 
 <p align="center">
+  <h1>V1</h1>
   <b>Every <a href="https://docs.anthropic.com/en/docs/claude-code">Claude Code</a> agent at a glance.</b><br>
   Watch them work, type into any of them, and see their desktops live.
 </p>
