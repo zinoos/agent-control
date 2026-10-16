@@ -72,8 +72,7 @@ class SessionTile(Gtk.Box):
         # ---- body: stream | terminal
         self.stream = StreamView()
         self.term = Vte.Terminal(hexpand=True, vexpand=True)
-        self.term.set_font(Pango.FontDescription.from_string(os.environ.get("AGENTCONTROL_FONT", "monospace 10")))
-        self.term.set_colors(_rgba("#e9ecef"), _rgba("#14161a"), [_rgba(c) for c in PALETTE])
+        self.apply_look()
         self.term.set_scrollback_lines(0)  # tmux keeps the history
         self.term.set_mouse_autohide(True)
         self.term.connect("child-exited", self._on_exit)
@@ -88,6 +87,12 @@ class SessionTile(Gtk.Box):
         self._spawn()
 
     # ------------------------------------------------------------ terminal
+
+    def apply_look(self):
+        self.term.set_font(Pango.FontDescription.from_string(self.app.font))
+        bg = _rgba("#14161a")
+        bg.alpha = self.app.opacity
+        self.term.set_colors(_rgba("#e9ecef"), bg, [_rgba(c) for c in PALETTE])
 
     def _spawn(self):
         argv = sessions.attach_argv(self.name)
