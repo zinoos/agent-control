@@ -1,0 +1,398 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Control · Every Claude Code agent at a glance</title>
+<meta name="description" content="Agent Control runs your Claude Code agents in one place: watch them work, type into any of them, and see their desktops live.">
+<link rel="icon" href="logo/mark.svg" type="image/svg+xml">
+<script>document.documentElement.classList.add('js');</script>
+<meta property="og:title" content="Agent Control">
+<meta property="og:description" content="Every Claude Code agent at a glance. Watch them work, type into any of them, and see their desktops live.">
+<meta property="og:image" content="screenshots/grid.png">
+<style>
+  :root {
+    --bg: #F4EFEA;
+    --bg-2: #EBE4DC;
+    --surface: #FFFFFF;
+    --ink: #1D1B20;
+    --ink-2: #4A464F;
+    --muted: #7A746E;
+    --line: #DDD5CB;
+    --accent: #FF5233;
+    --accent-ink: #FFFFFF;
+    --code-bg: #1D1B20;
+    --code-ink: #F4EFEA;
+    --shadow: 0 30px 80px -30px rgba(29, 27, 32, .35);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #141316;
+      --bg-2: #1B1A1F;
+      --surface: #1F1E24;
+      --ink: #F4EFEA;
+      --ink-2: #C9C2BA;
+      --muted: #8E877F;
+      --line: #2E2C33;
+      --accent: #FF6B4F;
+      --accent-ink: #141316;
+      --code-bg: #0C0B0E;
+      --code-ink: #EDE7E0;
+      --shadow: 0 30px 80px -30px rgba(0, 0, 0, .8);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #141316;
+    --bg-2: #1B1A1F;
+    --surface: #1F1E24;
+    --ink: #F4EFEA;
+    --ink-2: #C9C2BA;
+    --muted: #8E877F;
+    --line: #2E2C33;
+    --accent: #FF6B4F;
+    --accent-ink: #141316;
+    --code-bg: #0C0B0E;
+    --code-ink: #EDE7E0;
+    --shadow: 0 30px 80px -30px rgba(0, 0, 0, .8);
+  }
+
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
+  img { max-width: 100%; display: block; }
+  code, pre, .mono { font-family: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace; }
+  .wrap { width: min(1120px, calc(100% - 32px)); margin: 0 auto; }
+
+  /* nav */
+  nav {
+    position: sticky; top: 0; z-index: 10;
+    backdrop-filter: saturate(1.4) blur(12px);
+    background: color-mix(in srgb, var(--bg) 82%, transparent);
+    border-bottom: 1px solid var(--line);
+  }
+  nav .wrap { display: flex; align-items: center; gap: 24px; height: 60px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; text-decoration: none; letter-spacing: -.01em; }
+  .brand img { width: 26px; height: 26px; }
+  nav .links { margin-left: auto; display: flex; gap: 22px; font-size: 14px; color: var(--ink-2); }
+  nav .links a { text-decoration: none; }
+  nav .links a:hover { color: var(--ink); }
+  .btn {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 11px 18px; border-radius: 12px; font-weight: 600; font-size: 15px;
+    text-decoration: none; border: 1px solid var(--line); color: var(--ink); background: var(--surface);
+    transition: transform .15s ease, box-shadow .15s ease;
+  }
+  .btn:hover { transform: translateY(-1px); box-shadow: 0 8px 20px -10px rgba(0,0,0,.35); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+  nav .btn { padding: 7px 14px; font-size: 14px; border-radius: 10px; }
+
+  /* hero */
+  .hero { padding: 88px 0 56px; text-align: center; position: relative; overflow: hidden; }
+  .hero::before {
+    content: ""; position: absolute; inset: -20% -10% auto; height: 620px; z-index: -1;
+    background:
+      radial-gradient(40% 50% at 18% 30%, color-mix(in srgb, var(--accent) 26%, transparent), transparent 70%),
+      radial-gradient(35% 45% at 82% 20%, color-mix(in srgb, var(--accent) 12%, transparent), transparent 70%);
+  }
+  .eyebrow {
+    display: inline-flex; align-items: center; gap: 8px; padding: 6px 12px; border-radius: 999px;
+    border: 1px solid var(--line); background: var(--surface); font-size: 13px; color: var(--ink-2);
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 22%, transparent); }
+  h1 {
+    font-size: clamp(44px, 7.4vw, 88px); line-height: .98; letter-spacing: -.035em;
+    margin: 24px auto 22px; max-width: 14ch; font-weight: 800;
+  }
+  h1 em { font-style: normal; color: var(--accent); }
+  .lead { font-size: clamp(18px, 2.2vw, 21px); color: var(--ink-2); max-width: 36em; margin: 0 auto 34px; }
+  .cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+  .hero-shot {
+    margin: 64px auto 0; width: min(1080px, 100%); border-radius: 18px; overflow: hidden;
+    border: 1px solid var(--line); box-shadow: var(--shadow); background: var(--surface);
+  }
+  .hero-shot img { width: 100%; height: auto; }
+  .caption { color: var(--muted); font-size: 14px; margin-top: 14px; }
+
+  /* sections */
+  section { padding: 96px 0; }
+  section.alt { background: var(--bg-2); border-block: 1px solid var(--line); }
+  .kicker { color: var(--accent); font-weight: 700; font-size: 13px; letter-spacing: .12em; text-transform: uppercase; }
+  h2 { font-size: clamp(32px, 4.4vw, 52px); line-height: 1.05; letter-spacing: -.03em; margin: 12px 0 16px; font-weight: 800; max-width: 20ch; }
+  .sub { color: var(--ink-2); font-size: 18px; max-width: 40em; margin: 0 0 48px; }
+
+  .grid3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+  .card {
+    background: var(--surface); border: 1px solid var(--line); border-radius: 18px; padding: 28px;
+    transition: transform .2s ease, border-color .2s ease;
+  }
+  .card:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--accent) 50%, var(--line)); }
+  .icon {
+    width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; margin-bottom: 18px;
+    background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); font-weight: 800; font-size: 18px;
+  }
+  .card h3 { margin: 0 0 8px; font-size: 19px; letter-spacing: -.01em; }
+  .card p { margin: 0; color: var(--ink-2); font-size: 15px; }
+
+  /* split feature */
+  .split { display: grid; grid-template-columns: 1fr 1.15fr; gap: 56px; align-items: center; }
+  .split h2 { margin-top: 10px; }
+  .split ul { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 14px; }
+  .split li { display: grid; grid-template-columns: 22px 1fr; gap: 12px; color: var(--ink-2); }
+  .split li::before { content: ""; width: 10px; height: 10px; margin: 8px 0 0 6px; border-radius: 3px; background: var(--accent); }
+  .split li b { color: var(--ink); }
+  .shot { border-radius: 16px; overflow: hidden; border: 1px solid var(--line); box-shadow: var(--shadow); }
+  .shot img { width: 100%; height: auto; }
+
+  /* terminal */
+  .term {
+    background: var(--code-bg); color: var(--code-ink); border-radius: 16px; overflow: hidden;
+    border: 1px solid var(--line); box-shadow: var(--shadow);
+  }
+  .term-bar { display: flex; gap: 7px; padding: 12px 14px; border-bottom: 1px solid #ffffff14; }
+  .term-bar i { width: 11px; height: 11px; border-radius: 50%; background: #ffffff26; display: block; }
+  .term-bar i:first-child { background: var(--accent); }
+  pre { margin: 0; padding: 22px 24px; font-size: 14.5px; line-height: 1.75; overflow-x: auto; }
+  pre .p { color: var(--accent); }
+  pre .c { color: #8E877F; }
+  pre .k { color: #F7C873; }
+
+  /* install */
+  .install { text-align: center; }
+  .install .term { text-align: left; max-width: 760px; margin: 40px auto 0; }
+  .reqs { margin-top: 26px; color: var(--muted); font-size: 14px; }
+  .reqs code { color: var(--ink-2); }
+
+  /* footer */
+  footer { padding: 48px 0 64px; border-top: 1px solid var(--line); color: var(--muted); font-size: 14px; }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 20px; align-items: center; justify-content: space-between; }
+  footer .links { display: flex; gap: 20px; }
+  footer a { text-decoration: none; }
+  footer a:hover { color: var(--ink); }
+  .theme {
+    border: 1px solid var(--line); background: var(--surface); color: var(--ink-2);
+    border-radius: 10px; padding: 6px 10px; font: inherit; font-size: 13px; cursor: pointer;
+  }
+
+  .js .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s ease, transform .7s ease; }
+  .js .reveal.in { opacity: 1; transform: none; }
+  @media (prefers-reduced-motion: reduce) {
+    html { scroll-behavior: auto; }
+    .js .reveal { opacity: 1; transform: none; transition: none; }
+    .card, .btn { transition: none; }
+  }
+
+  @media (max-width: 880px) {
+    .grid3 { grid-template-columns: 1fr 1fr; }
+    .split { grid-template-columns: 1fr; gap: 36px; }
+    nav .links a:not(.btn) { display: none; }
+  }
+  @media (max-width: 580px) {
+    .wrap { width: calc(100% - 32px); }
+    .grid3 { grid-template-columns: 1fr; }
+    .hero { padding: 56px 0 40px; }
+    section { padding: 72px 0; }
+    nav .links { gap: 10px; }
+    pre { font-size: 13px; padding: 18px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="wrap">
+    <a class="brand" href="#top"><img src="logo/mark.svg" alt=""> Agent Control</a>
+    <div class="links">
+      <a href="#features">Features</a>
+      <a href="#cli">CLI</a>
+      <a href="#streams">Live streams</a>
+      <a href="#install">Install</a>
+      <a class="btn" href="https://github.com/zinoos/agent-control">GitHub</a>
+    </div>
+  </div>
+</nav>
+
+<header class="hero" id="top">
+  <div class="wrap">
+    <span class="eyebrow reveal"><span class="dot"></span> Linux · GTK 4 · open source</span>
+    <h1 class="reveal">Every Claude Code agent, <em>at a glance.</em></h1>
+    <p class="lead reveal">Run your agents in one window. Watch them work, type straight into any of them,
+      and see the desktops they're using, live.</p>
+    <div class="cta reveal">
+      <a class="btn primary" href="#install">Install Agent Control</a>
+      <a class="btn" href="#features">See what it does</a>
+    </div>
+    <figure class="hero-shot reveal">
+      <img src="screenshots/grid.png" alt="Agent Control: five Claude Code agents in a grid, grouped by project, one streaming its desktop live">
+    </figure>
+    <p class="caption reveal">Five agents, grouped by project. One is streaming its own desktop.</p>
+  </div>
+</header>
+
+<section id="features" class="alt">
+  <div class="wrap">
+    <div class="reveal">
+      <div class="kicker">Features</div>
+      <h2>Stop tabbing between terminals.</h2>
+      <p class="sub">Agent Control turns a pile of Claude Code sessions into a dashboard you can actually read.</p>
+    </div>
+    <div class="grid3">
+      <article class="card reveal">
+        <div class="icon">▦</div>
+        <h3>Tiles, not tabs</h3>
+        <p>Each agent gets a tile with its real Claude Code terminal and a working or idle state. Focus one, or
+          grid them automatically or in 1–4 columns.</p>
+      </article>
+      <article class="card reveal">
+        <div class="icon">⌨</div>
+        <h3>Type into any agent</h3>
+        <p>The terminal is live. Click into a tile and answer a question, or send a new instruction, without
+          leaving the grid.</p>
+      </article>
+      <article class="card reveal">
+        <div class="icon">◧</div>
+        <h3>Projects</h3>
+        <p>Name a working directory once. Agents are grouped by the project they run in, and each project has a
+          one-click + to start another agent there.</p>
+      </article>
+      <article class="card reveal">
+        <div class="icon">⏵</div>
+        <h3>Live desktop streams</h3>
+        <p>With <a href="https://github.com/zinoos/hypr-computer">hypr-computer</a>, each agent gets its own
+          desktop. Its tile streams the screen with the last action as a ticker.</p>
+      </article>
+      <article class="card reveal">
+        <div class="icon">↻</div>
+        <h3>Resume past sessions</h3>
+        <p>Search your recent Claude Code sessions by title, prompt or folder, and continue one in a new agent
+          in its original directory.</p>
+      </article>
+      <article class="card reveal">
+        <div class="icon">◔</div>
+        <h3>Token usage</h3>
+        <p>Open the TokenTracker dashboard beside your agents: cost and usage per day, model, project and
+          session, plus subscription limits.</p>
+      </article>
+    </div>
+  </div>
+</section>
+
+<section id="cli">
+  <div class="wrap split">
+    <div class="reveal">
+      <div class="kicker">The <code class="mono">ac</code> CLI</div>
+      <h2>Agents that can drive agents.</h2>
+      <p class="sub" style="margin-bottom:0">Start, message, read and wait for agents from any shell, including
+        from another agent. Every command works on the same agents you see in the window.</p>
+      <ul>
+        <li><span><b>Start</b> an agent in a project with a first instruction.</span></li>
+        <li><span><b>Message</b> it while it works. Claude Code queues the input.</span></li>
+        <li><span><b>Wait</b> until it's idle, then <b>peek</b> at the end of its screen.</span></li>
+        <li><span><b>Attach</b> any terminal to an agent's session, or stop it with Esc.</span></li>
+      </ul>
+    </div>
+    <div class="term reveal">
+      <div class="term-bar"><i></i><i></i><i></i></div>
+<pre><span class="c"># one project, one task, one wait</span>
+<span class="p">$</span> ac project add my-app ~/code/my-app
+<span class="p">$</span> ac new fix-tests -P my-app -p "Run the tests, fix what fails, summarize."
+<span class="p">$</span> ac wait fix-tests -t 900 <span class="k">&amp;&amp;</span> ac peek fix-tests -n 60
+
+<span class="c"># from anywhere, to anyone</span>
+<span class="p">$</span> ac ls
+<span class="p">$</span> ac send fix-tests <span class="k">"also update the changelog"</span></pre>
+    </div>
+  </div>
+</section>
+
+<section id="streams" class="alt">
+  <div class="wrap split">
+    <div class="shot reveal">
+      <img src="screenshots/focus.png" alt="One agent focused: its live desktop stream shows Firefox, its Claude Code terminal on the right">
+    </div>
+    <div class="reveal">
+      <div class="kicker">Live desktops</div>
+      <h2>See what the agent sees.</h2>
+      <p class="sub" style="margin-bottom:0">Focus an agent to watch its desktop full size while you read along
+        in its terminal. Streams only capture while visible, so idle screens cost almost nothing.</p>
+      <ul>
+        <li><span><b>Separate desktops.</b> Each agent works in its own nested Hyprland session.</span></li>
+        <li><span><b>Activity ticker.</b> The tile shows what the agent just did, and LIVE while it's active.</span></li>
+        <li><span><b>Optional.</b> Without hypr-computer, tiles show terminals only.</span></li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap install">
+    <div class="kicker reveal">Install</div>
+    <h2 class="reveal" style="margin-left:auto;margin-right:auto">Up and running in a minute.</h2>
+    <p class="sub reveal" style="margin-left:auto;margin-right:auto">Agent Control is a Python app with a native GTK 4
+      interface. Clone it, run the installer, and it's in your app launcher.</p>
+    <div class="term reveal">
+      <div class="term-bar"><i></i><i></i><i></i></div>
+<pre><span class="c"># Fedora: sudo dnf install tmux python3-gobject gtk4 libadwaita vte291-gtk4</span>
+<span class="p">$</span> git clone https://github.com/zinoos/agent-control.git ~/projects/agent-control
+<span class="p">$</span> cd ~/projects/agent-control
+<span class="p">$</span> ./install.sh            <span class="c"># links ac + agentcontrol, adds the launcher entry</span>
+<span class="p">$</span> ./install.sh --skill    <span class="c"># also installs the Claude Code skill for your agents</span>
+<span class="p">$</span> agentcontrol</pre>
+    </div>
+    <p class="reqs reveal">Linux with Wayland or X11 · <code>claude</code> on your PATH, logged in · tmux ·
+      Python 3.10+ · MIT licensed</p>
+    <div class="cta reveal" style="margin-top:32px">
+      <a class="btn primary" href="https://github.com/zinoos/agent-control">View on GitHub</a>
+      <a class="btn" href="https://github.com/zinoos/agent-control#readme">Read the docs</a>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <div class="brand" style="color:var(--ink)"><img src="logo/mark.svg" alt=""> Agent Control</div>
+    <div class="links">
+      <a href="https://github.com/zinoos/agent-control">GitHub</a>
+      <a href="https://github.com/zinoos/agent-control/blob/master/LICENSE">MIT License</a>
+      <a href="logo/lockup.svg">Logo</a>
+    </div>
+    <button class="theme" id="theme" type="button" aria-label="Toggle colour theme">Theme</button>
+  </div>
+</footer>
+
+<script>
+  // Reveal sections as they scroll in; the theme button flips between light and dark.
+  (function () {
+    var items = document.querySelectorAll('.reveal');
+    if ('IntersectionObserver' in window) {
+      var io = new IntersectionObserver(function (entries) {
+        entries.forEach(function (e) { if (e.isIntersecting) { e.target.classList.add('in'); io.unobserve(e.target); } });
+      }, { threshold: 0.12 });
+      items.forEach(function (el) { io.observe(el); });
+    } else {
+      items.forEach(function (el) { el.classList.add('in'); });
+    }
+
+    var root = document.documentElement;
+    var btn = document.getElementById('theme');
+    try {
+      var saved = localStorage.getItem('ac-theme');
+      if (saved) root.setAttribute('data-theme', saved);
+    } catch (e) {}
+    btn.addEventListener('click', function () {
+      var dark = root.getAttribute('data-theme') === 'dark' ||
+        (!root.getAttribute('data-theme') && matchMedia('(prefers-color-scheme: dark)').matches);
+      var next = dark ? 'light' : 'dark';
+      root.setAttribute('data-theme', next);
+      try { localStorage.setItem('ac-theme', next); } catch (e) {}
+    });
+  })();
+</script>
+</body>
+</html>
