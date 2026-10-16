@@ -7,11 +7,11 @@ import os
 import re
 from dataclasses import dataclass
 
+from . import settings
+
 CONFIG = os.path.join(os.environ.get("XDG_CONFIG_HOME", os.path.expanduser("~/.config")), "agentcontrol",
                       "projects.json")
 DEFAULTS: list[dict] = []  # first run starts with no presets; add them in the app or with `ac project add`
-# Where new projects go by default (`ac project add NAME` without DIR, and the new-project dialog).
-ROOT = os.environ.get("AGENTCONTROL_PROJECTS_DIR", "~/projects").rstrip("/")
 OTHER = "Other"  # group for agents outside every project
 
 
@@ -34,9 +34,14 @@ def slug(name: str) -> str:
     return re.sub(r"[^A-Za-z0-9_-]+", "-", name).strip("-").lower() or "project"
 
 
+def root() -> str:
+    """Where new projects go by default (`ac project add NAME` without DIR, and the new-project dialog)."""
+    return (settings.get("projects_dir").strip() or "~/projects").rstrip("/")
+
+
 def default_dir(name: str) -> str:
-    """The directory a new project called name gets unless one is given: ROOT/<slug>."""
-    return f"{ROOT}/{slug(name)}"
+    """The directory a new project called name gets unless one is given: root()/<slug>."""
+    return f"{root()}/{slug(name)}"
 
 
 def load() -> list[Project]:

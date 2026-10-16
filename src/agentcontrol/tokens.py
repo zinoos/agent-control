@@ -24,6 +24,8 @@ gi.require_version("Gtk", "4.0")
 gi.require_version("Pango", "1.0")
 from gi.repository import Gdk, Gio, GLib, Gtk, Pango  # noqa: E402
 
+from . import settings  # noqa: E402
+
 try:
     gi.require_version("WebKit", "6.0")
     from gi.repository import WebKit  # noqa: E402
@@ -37,8 +39,8 @@ ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 
 
 def tracker_argv() -> list[str] | None:
-    if os.environ.get("AGENTCONTROL_TOKENTRACKER"):
-        return shlex.split(os.environ["AGENTCONTROL_TOKENTRACKER"])
+    if settings.get("tokentracker").strip():
+        return shlex.split(settings.get("tokentracker"))
     if shutil.which("tokentracker"):
         return [shutil.which("tokentracker")]
     if shutil.which("npx"):

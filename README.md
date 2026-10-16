@@ -89,8 +89,14 @@ In the app:
 - **Grid button**: auto grid or a fixed 1-4 columns. The eye button hides or shows an agent in the grid
 - Per tile: **Stop** = Esc, **×** hides the tile (the session keeps running). With streams available, the
   **video button** cycles auto / stream / terminal
-- **Gear button / Ctrl+,**: settings. *Appearance*: window opacity (the blur behind it comes from your
-  compositor, e.g. Hyprland's `decoration:blur`) and the terminal font
+- **Gear button / Ctrl+,**: settings, applied right away
+  - *Appearance*: window opacity (the blur behind it comes from your compositor, e.g. Hyprland's
+    `decoration:blur`), accent color, gap and corner radius of the tiles, terminal font and color scheme
+    (agentControl, Catppuccin Mocha, Tokyo Night, Gruvbox Dark, or the colors from your kitty.conf)
+  - *Agents*: folder for new projects, extra `claude` arguments for every new agent (also for `ac new`),
+    a desktop notification when an agent finishes while the window isn't focused, asking before ending a session
+  - *Panels*: default tile view and max fps for streams, whether the token panel opens at start, the
+    TokenTracker command
 - Type straight into a tile's terminal; `ac send` messages an agent from any shell
 
 Only sessions started through agentControl (`ac new`, the + button or resume) appear; a `claude` started in
@@ -103,11 +109,12 @@ Everything works without configuration. Files and environment variables, all opt
 | What | Default | Purpose |
 |---|---|---|
 | `~/.config/agentcontrol/projects.json` | created empty | project presets (edited from the app or `ac project`) |
-| `~/.local/state/agentcontrol.json` | | window state (hidden tiles, columns, panel width) and settings (opacity, font) |
-| `AGENTCONTROL_PROJECTS_DIR` | `~/projects` | where new projects go when no directory is given |
+| `~/.config/agentcontrol/settings.json` | created by the Settings dialog | settings (also read by `ac`) |
+| `~/.local/state/agentcontrol.json` | | window state: hidden tiles, columns, panel width |
+| `AGENTCONTROL_PROJECTS_DIR` | `~/projects` | where new projects go when no directory is given, until set in Settings |
 | `AGENTCONTROL_FONT` | `monospace 10` | terminal font until one is picked in Settings (Pango syntax, e.g. `JetBrains Mono 11`) |
 | `AGENTCONTROL_PYTHON` | `/usr/bin/python3` | the Python that has PyGObject |
-| `AGENTCONTROL_TOKENTRACKER` | `tokentracker`, else `npx -y tokentracker-cli@latest` | command for the token panel |
+| `AGENTCONTROL_TOKENTRACKER` | `tokentracker`, else `npx -y tokentracker-cli@latest` | command for the token panel, until set in Settings |
 | `HYPR_COMPUTER_SRC` | `../hypr-computer/src` next to this repo | where to find hypr-computer for streams |
 
 `projects.json` looks like this:
