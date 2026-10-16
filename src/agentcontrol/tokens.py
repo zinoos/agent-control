@@ -116,7 +116,7 @@ class TokenPanel(Gtk.Box):
             return
         if not self.web:
             return self._fail("WebKitGTK 6.0 not found.\n\nInstall its GObject bindings (Fedora: webkitgtk6.0,"
-                              " Debian/Ubuntu: gir1.2-webkit-6.0, Arch: webkitgtk-6.0), then restart agentControl.")
+                              " Debian/Ubuntu: gir1.2-webkit-6.0, Arch: webkitgtk-6.0), then restart Agent Control.")
         self.started = True
         self._status("Looking for TokenTracker…", busy=True)
         threading.Thread(target=self._probe, daemon=True).start()

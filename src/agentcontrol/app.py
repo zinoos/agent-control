@@ -20,6 +20,7 @@ from . import history, projects, sessions  # noqa: E402
 from .tile import SessionTile  # noqa: E402
 from .tokens import TokenPanel  # noqa: E402
 
+ICONS = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "icons")
 STATE = os.path.join(os.environ.get("XDG_STATE_HOME", os.path.expanduser("~/.local/state")), "agentcontrol.json")
 
 CSS = """
@@ -42,7 +43,7 @@ window, .main { background: #0e0f12; }
 .dot.working { color: #ffa94d; }
 .dot.idle { color: #51cf66; }
 .dot.starting { color: #74c0fc; }
-.live-pill, .live-badge { background: #e03131; color: white; font-weight: 800; font-size: 10px;
+.live-pill, .live-badge { background: #ff5233; color: white; font-weight: 800; font-size: 10px;
                           border-radius: 4px; padding: 1px 6px; }
 .live-badge { font-size: 12px; padding: 2px 8px; }
 .stream { background: black; }
@@ -50,6 +51,7 @@ window, .main { background: #0e0f12; }
 .stream-ticker { background: linear-gradient(to top, alpha(black, 0.75), transparent); color: white;
                  padding: 14px 12px 8px 12px; font-size: 13px; }
 .empty-title { font-size: 22px; font-weight: 800; }
+.brand { font-weight: 800; }
 .running-pill { background: alpha(#51cf66, 0.2); color: #51cf66; font-weight: 700; font-size: 10px;
                 border-radius: 4px; padding: 1px 6px; }
 """
@@ -112,9 +114,12 @@ class App(Adw.Application):
         prov.load_from_string(CSS)
         Gtk.StyleContext.add_provider_for_display(Gdk.Display.get_default(), prov,
                                                   Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION)
+        # App icon and logo straight from the checkout, so they show without installing anything.
+        Gtk.IconTheme.get_for_display(Gdk.Display.get_default()).add_search_path(ICONS)
+        Gtk.Window.set_default_icon_name("dev.agentcontrol.App")
         sessions.ensure_server()
 
-        self.win = Adw.ApplicationWindow(application=self, title="agentControl")
+        self.win = Adw.ApplicationWindow(application=self, title="Agent Control")
         self.win.set_default_size(1600, 950)
 
         # sidebar
@@ -123,7 +128,10 @@ class App(Adw.Application):
         side_scroll = Gtk.ScrolledWindow(vexpand=True, child=self.list)
         side_tb = Adw.ToolbarView()
         side_head = Adw.HeaderBar(show_end_title_buttons=False)
-        side_head.set_title_widget(Adw.WindowTitle(title="agentControl", subtitle="agents"))
+        brand = Gtk.Box(spacing=8, halign=Gtk.Align.CENTER)
+        brand.append(Gtk.Image(icon_name="agentcontrol-mark", pixel_size=18))
+        brand.append(Gtk.Label(label="Agent Control", css_classes=["brand"]))
+        side_head.set_title_widget(brand)
         new_btn = Gtk.Button(icon_name="list-add-symbolic", tooltip_text="New agent (Ctrl+N)")
         new_btn.connect("clicked", lambda *_: self.new_dialog())
         side_head.pack_start(new_btn)
@@ -140,7 +148,7 @@ class App(Adw.Application):
         # content
         self.grid = Gtk.Grid(row_spacing=8, column_spacing=8, row_homogeneous=True, column_homogeneous=True,
                              margin_top=8, margin_bottom=8, margin_start=8, margin_end=8)
-        self.empty = Adw.StatusPage(icon_name="utilities-terminal-symbolic", title="No agents yet",
+        self.empty = Adw.StatusPage(icon_name="dev.agentcontrol.App", title="No agents yet",
                                     description="Start one with + (Ctrl+N), or from any terminal: ac new")
         self.stack = Gtk.Stack()
         self.stack.add_named(self.grid, "grid")

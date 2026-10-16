@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Install agentControl for the current user: `ac` and `agentcontrol` on PATH, an app-launcher entry, and
+# Install Agent Control for the current user: `ac` and `agentcontrol` on PATH, an app-launcher entry with its icon, and
 # (with --skill) the agent-control skill for Claude Code. Everything is a symlink back into this checkout,
 # so `git pull` updates it. Undo: ./install.sh --uninstall
 set -euo pipefail
@@ -7,6 +7,9 @@ here="$(cd -- "$(dirname -- "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 bin="${AGENTCONTROL_BIN_DIR:-$HOME/.local/bin}"
 apps="${XDG_DATA_HOME:-$HOME/.local/share}/applications"
 skills="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/skills"
+icons="${XDG_DATA_HOME:-$HOME/.local/share}/icons/hicolor"
+icon="scalable/apps/dev.agentcontrol.App.svg"
+symbolic="symbolic/apps/dev.agentcontrol.App-symbolic.svg"
 
 link() {  # link SRC DEST: never replaces a real file
   if [ -e "$2" ] && [ ! -L "$2" ]; then echo "skip: $2 exists and isn't a symlink" >&2; return; fi
@@ -20,7 +23,8 @@ unlink_ours() {
 
 case "${1:-}" in
   --uninstall)
-    for f in "$bin/ac" "$bin/agentcontrol" "$apps/agentcontrol.desktop" "$skills/agent-control"; do unlink_ours "$f"; done
+    for f in "$bin/ac" "$bin/agentcontrol" "$apps/agentcontrol.desktop" "$skills/agent-control" \
+             "$icons/$icon" "$icons/$symbolic"; do unlink_ours "$f"; done
     exit 0 ;;
   ""|--skill) ;;
   *) echo "usage: $0 [--skill | --uninstall]" >&2; exit 2 ;;
@@ -43,8 +47,11 @@ command -v tokentracker >/dev/null || command -v npx >/dev/null || optional+=("t
 link "$here/bin/ac" "$bin/ac"
 link "$here/bin/agentcontrol" "$bin/agentcontrol"
 link "$here/agentcontrol.desktop" "$apps/agentcontrol.desktop"
+link "$here/data/icons/hicolor/$icon" "$icons/$icon"
+link "$here/data/icons/hicolor/$symbolic" "$icons/$symbolic"
 [ "${1:-}" = --skill ] && link "$here/skill" "$skills/agent-control"
 command -v update-desktop-database >/dev/null && update-desktop-database "$apps" 2>/dev/null || true
+command -v gtk-update-icon-cache >/dev/null && gtk-update-icon-cache -qtf "$icons" 2>/dev/null || true
 
 case ":$PATH:" in *":$bin:"*) ;; *) echo "note: $bin is not on your PATH" >&2 ;; esac
 if [ ${#missing[@]} -gt 0 ]; then
