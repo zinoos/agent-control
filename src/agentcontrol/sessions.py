@@ -173,7 +173,8 @@ def new_session(name: str | None = None, cwd: str | None = None, prompt: str | N
     if prompt:
         cmd.append(prompt)
     tmux("new-session", "-d", "-s", name, "-c", cwd, "-x", "160", "-y", "48",
-         "-e", f"AGENTCONTROL_SESSION={name}", shlex.join(cmd), check=True)
+         # drop to a shell when Claude exits (double Ctrl+C) instead of closing the session
+         "-e", f"AGENTCONTROL_SESSION={name}", shlex.join(cmd) + "; exec bash", check=True)
     if project:
         set_project(name, project)
     return name
