@@ -72,6 +72,9 @@ class SessionTile(Gtk.Box):
         self.term.set_scrollback_lines(0)  # tmux keeps the history
         self.term.set_mouse_autohide(True)
         self.term.connect("child-exited", self._on_exit)
+        hover = Gtk.EventControllerMotion()
+        hover.connect("enter", self._focus_on_hover)
+        self.term.add_controller(hover)
         self.paned = Gtk.Paned(orientation=Gtk.Orientation.HORIZONTAL, wide_handle=True, vexpand=True)
         self.paned.set_start_child(self.stream)
         self.paned.set_end_child(self.term)
@@ -97,6 +100,11 @@ class SessionTile(Gtk.Box):
         env = [f"{k}={v}" for k, v in os.environ.items() if k not in ("TMUX", "TMUX_PANE")] + ["TERM=xterm-256color"]
         self.term.spawn_async(Vte.PtyFlags.DEFAULT, os.path.expanduser("~"), argv, env,
                               GLib.SpawnFlags.SEARCH_PATH, None, None, -1, None, None)
+
+    def _focus_on_hover(self, *_):
+        # don't steal focus from a text field the user is typing in (search, message box)
+        if not isinstance(self.term.get_root().get_focus(), Gtk.Editable):
+            self.term.grab_focus()
 
     def _on_exit(self, *_):
         if any(s.name == self.name for s in sessions.list_sessions()):
