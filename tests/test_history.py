@@ -5,6 +5,7 @@ import time
 import unittest
 from unittest import mock
 
+import tests  # noqa: F401  first: this run's own HOME and config, before agentcontrol reads its paths
 from agentcontrol import history
 
 PROJ = os.path.join(history.CLAUDE_DIR, "projects", "-home-test")

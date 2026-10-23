@@ -13,7 +13,7 @@ managed with the `ac` CLI, which works from your shell too.
 
 | Command | Does |
 |---|---|
-| `ac ls` | agents grouped by project: name, state (working/idle/starting), label, desktop, LIVE |
+| `ac ls` | agents grouped by project: name, state (working/idle/starting), label, desktop, LIVE; then the Claude Code sessions running elsewhere |
 | `ac projects` | project presets (name → directory), e.g. `my-app ~/projects/my-app` |
 | `ac new NAME -P PROJECT -p "instruction"` | start an agent in the project's directory |
 | `ac new NAME -C DIR -p "instruction"` | start one in any directory (grouped by the project containing DIR) |
@@ -54,7 +54,9 @@ Only when the user asked for one: every agent is a full Claude Code session on t
 
 - `$AGENTCONTROL_SESSION` is set when you yourself run inside agentControl: the user may be watching your
   tile and can message you through it.
-- Sessions started in a plain terminal (`claude` in any terminal) are invisible to agentControl and `ac`.
+- Sessions started elsewhere (`claude` in any terminal, an editor, Claude Desktop) show in agentControl and
+  `ac ls` as "outside agentControl", named after what they run in (`kitty-12345`). They are read-only:
+  `ac peek` prints the end of their transcript, but `ac send`, `wait`, `stop` and `kill` refuse them.
 - Agent desktops (hypr-computer MCP) are per agent: one agent's clicks never touch another's or the user's
   cursor. The user watches a desktop in the agent's tile, where it shows as LIVE
   for 45 s after each action, with the action in a ticker.

@@ -4,6 +4,7 @@ import shutil
 import unittest
 from types import SimpleNamespace
 
+import tests  # noqa: F401  first: this run's own HOME and config, before agentcontrol reads its paths
 from agentcontrol import projects, settings
 
 HOME = os.path.expanduser("~")

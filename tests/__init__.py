@@ -1,6 +1,8 @@
 """Test setup: every test run gets its own HOME, config and state dirs, Claude dir and tmux server, and a fake
 `claude` on PATH, so the tests never touch the real agents or settings. This has to happen before agentcontrol
-is imported: its modules read these paths at import time."""
+is imported: its modules read these paths at import time. So every test module starts with `import tests`: unittest
+doesn't run this file by itself when the tests aren't imported as a package (`discover -s tests` without `-t .`),
+and without it the tests would delete the real projects.json and settings.json."""
 
 import atexit
 import os
@@ -8,6 +10,10 @@ import shutil
 import subprocess
 import sys
 import tempfile
+
+if any(m == "agentcontrol" or m.startswith("agentcontrol.") for m in sys.modules):
+    raise RuntimeError("agentcontrol was imported before the test sandbox, so its paths are the real config: "
+                       "start every test module with `import tests`")
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 TMP = tempfile.mkdtemp(prefix="agentcontrol-test-")
