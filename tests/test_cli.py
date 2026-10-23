@@ -5,6 +5,7 @@ import shutil
 import subprocess
 import unittest
 
+import tests  # noqa: F401  first: this run's own HOME and config, before agentcontrol reads its paths
 from agentcontrol import cli, projects, sessions, settings
 from tests import ROOT
 

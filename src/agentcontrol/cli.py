@@ -3,19 +3,23 @@
   ac new [NAME] [-P PROJECT] [-C DIR] [-p PROMPT] [-- CLAUDE ARGS...]
                                                          start an agent (Claude Code in tmux); with -P it
                                                          starts in the project's directory
-  ac ls                                                  list agents by project (state, desktop, live)
+  ac ls                                                  list agents by project (state, desktop, live), and
+                                                         the Claude Code sessions running elsewhere
   ac projects                                            list projects
   ac project add NAME [DIR]                              add a project (DIR default ~/projects/NAME, or the
                                                          folder from Settings; created if missing)
   ac project rm NAME                                     forget a project (files and agents stay)
   ac attach NAME                                         attach this terminal to an agent
   ac send NAME TEXT...                                   send a message (even mid-task)
-  ac peek NAME [-n LINES]                                print the end of the agent's screen (default 40)
+  ac peek NAME [-n LINES]                                print the end of the agent's screen (default 40), or
+                                                         of the transcript of a session running elsewhere
   ac wait NAME [-t SECONDS]                              block until the agent is idle (default 600 s);
                                                          prints idle / ended / timeout
   ac stop NAME                                           interrupt (Esc)
   ac kill NAME                                           end the session
   ac app                                                 open agentControl
+
+Sessions running elsewhere (a terminal, an editor, Claude Desktop) are read-only here: ac ls and ac peek.
 """
 
 import argparse
@@ -23,7 +27,7 @@ import os
 import subprocess
 import sys
 
-from . import projects, sessions
+from . import external, projects, sessions
 
 
 def main(argv=None):
@@ -32,6 +36,9 @@ def main(argv=None):
         print(__doc__.strip())
         return 0
     cmd, rest = argv[0], argv[1:]
+    if cmd in ("attach", "send", "wait", "stop", "kill") and rest and (e := _outside(rest[0])):
+        raise RuntimeError(f"{e.name} runs in {e.where}, outside agentControl: ac ls and ac peek see it, but "
+                           "it can't be driven from here")
     if cmd == "new":
         claude_args = []
         if "--" in rest:
@@ -48,6 +55,7 @@ def main(argv=None):
         print(f"started {name}  (watch: agentControl, or: ac attach {name})")
     elif cmd == "ls":
         ss = sessions.list_sessions()
+        ss += external.list_external(ss)
         if not ss:
             print("no agents")
         projs = projects.load()
@@ -63,6 +71,8 @@ def main(argv=None):
                 desk = ""
                 if s.desk:
                     desk = f"  desktop {s.desk.name}" + (" LIVE" if s.desk.active else "")
+                if isinstance(s, external.External):
+                    desk += f"  in {s.where}, outside agentControl"
                 print(f"  {s.name:16} {s.state:9} {s.label[:50]:50}{desk}")
     elif cmd == "projects":
         for p in projects.load():
@@ -84,7 +94,8 @@ def main(argv=None):
         p.add_argument("name")
         p.add_argument("-n", "--lines", type=int, default=40)
         a = p.parse_args(rest)
-        print(sessions.peek(a.name, a.lines))
+        e = _outside(a.name)
+        print(external.peek(e, a.lines) if e else sessions.peek(a.name, a.lines))
     elif cmd == "wait":
         p = argparse.ArgumentParser(prog="ac wait")
         p.add_argument("name")
@@ -104,6 +115,13 @@ def main(argv=None):
         print(f"unknown command {cmd!r}\n\n{__doc__.strip()}", file=sys.stderr)
         return 2
     return 0
+
+
+def _outside(name: str) -> external.External | None:
+    """The session called name if it runs outside agentControl, not as one of our agents."""
+    if any(s.name == name for s in sessions.list_sessions()):
+        return None
+    return external.get(name)
 
 
 def run():

@@ -30,6 +30,7 @@ and a token panel shows what they cost.
 Native GTK 4 / libadwaita + VTE, written in Python. Linux only.
 
 - **Tiles**: each agent's Claude Code terminal (type straight into it) and its state, working or idle. Focus one, or grid them in auto / 1–4 columns.
+- **Every session**: Claude Code sessions you started elsewhere (a terminal, your editor, Claude Desktop) show up too, read-only: their state and transcript, and a button that raises their window.
 - **`ac` CLI**: start, message, read and wait for agents from any shell, including from another agent.
 - **Projects**: named working directories. Agents are grouped by the project they run in.
 - **Live desktop streams**: with [hypr-computer](#live-desktop-streams-optional) agent desktops, a tile streams the agent's screen with its last action as a ticker.
@@ -77,12 +78,12 @@ straight from the checkout.
 ```sh
 agentcontrol                     # the app (also in the app launcher)
 ac new [NAME] [-P PROJECT] [-C DIR] [-p "first instruction"] [-- claude args]
-ac ls                            # agents by project: state, desktop, LIVE
+ac ls                            # agents by project: state, desktop, LIVE; and sessions running elsewhere
 ac projects                      # project presets
 ac project add NAME [DIR]        # DIR defaults to ~/projects/<name>; created if missing
 ac project rm NAME               # forget the preset (files and agents stay)
 ac send NAME "do X next"         # message an agent (queued by Claude Code while it works)
-ac peek NAME [-n 40]             # the end of its screen as text
+ac peek NAME [-n 40]             # the end of its screen as text (a session running elsewhere: its transcript)
 ac wait NAME [-t 600]            # block until it's idle (idle / ended / timeout)
 ac attach NAME                   # this terminal into the agent's session (tmux)
 ac stop NAME                     # Esc: interrupt
@@ -158,7 +159,8 @@ Everything works without configuration. Files and environment variables, all opt
 dbus-run-session -- python3 -m unittest discover -s tests -t . -v
 ```
 
-The tests use their own HOME, settings and tmux server and a fake `claude`, so they never touch your agents.
+The tests use their own HOME, settings and tmux server and a fake `claude`, so they never touch your agents
+or your projects, however the suite is started.
 The GUI tests need a display (they're skipped without one). Run them before every push (see `AGENTS.md`);
 `.github/workflows/tests.yml` runs the same suite in a Fedora container under Xvfb where GitHub Actions is on.
 
@@ -215,6 +217,11 @@ file at the same `ac` commands.
 - A tile's terminal is a VTE running `tmux attach`. `ac send` uses tmux bracketed paste + Enter, which
   Claude Code queues while it's working.
 - State (working / idle) comes from the terminal title Claude Code sets (spinner vs ✳).
+- Sessions running elsewhere come from Claude Code's own list of running sessions, `~/.claude/sessions/<pid>.json`
+  (session id, folder, name, busy / idle): every one whose process isn't in our tmux server. Their tile follows
+  the transcript (`~/.claude/projects/<folder>/<session id>.jsonl`) and is named after what it runs in, the
+  window class on Hyprland (`kitty-12345`, `zed-…`, `claude-desktop-…`). They are read-only: `ac send`, `stop`,
+  `kill`, `wait` and `attach` refuse them. Their window button uses `hyprctl`, so it's there on Hyprland only.
 - An agent started for a project is tagged with the tmux session option `@ac_project`. An untagged agent
   (say `ac new -C ~/code/my-app/api`) goes under the project whose directory contains its start directory,
   the most specific one.

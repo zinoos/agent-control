@@ -5,9 +5,13 @@ import dataclasses
 import json
 import os
 import shutil
+import subprocess
 import time
 import unittest
 from unittest import mock
+
+import tests  # noqa: F401  first: this run's own HOME and config, before agentcontrol reads its paths
+from tests.test_external import assistant, register, transcript, user
 
 HAS_DISPLAY = bool(os.environ.get("WAYLAND_DISPLAY") or os.environ.get("DISPLAY"))
 HAS_TMUX = shutil.which("tmux") is not None
@@ -19,7 +23,8 @@ if HAS_DISPLAY:
     from gi.repository import Adw, Gio, GLib, Gtk  # noqa: E402
 
     from agentcontrol import app as appmod  # noqa: E402
-    from agentcontrol import sessions, settings  # noqa: E402
+    from agentcontrol import external, history, sessions, settings  # noqa: E402
+    from agentcontrol.tile import ExternalTile  # noqa: E402
     from agentcontrol.tokens import TokenPanel  # noqa: E402
 
 
@@ -275,6 +280,41 @@ class AppTest(unittest.TestCase):
         finally:
             sessions.kill("gamma")
             self.app.refresh()
+
+    def test_session_running_elsewhere(self):
+        proc = subprocess.Popen(["sleep", "60"])
+        self.addCleanup(proc.wait)
+        self.addCleanup(proc.kill)
+        register(proc.pid, sid="ext", status="busy")
+        path = transcript("ext", "/w", [{"cwd": "/w"}, user("hello from kitty"),
+                                        assistant({"type": "tool_use", "name": "Bash", "input": {"command": "ls"}})])
+        self.addCleanup(shutil.rmtree, history.CLAUDE_DIR, ignore_errors=True)
+        self.app.refresh()
+        pump(0.2)
+        name = external.list_external([])[0].name
+        tile = self.app.tiles[name]
+        self.assertIsInstance(tile, ExternalTile)
+        self.assertIn(name, self.app.rows)
+        self.assertIn("working", tile.dot.get_css_classes())
+        buf = tile.term.get_buffer()
+        text = lambda: buf.get_text(buf.get_start_iter(), buf.get_end_iter(), False)  # noqa: E731
+        self.assertEqual(text(), "❯ hello from kitty\n● Bash(ls)\n")
+        with open(path, "a") as f:
+            f.write(json.dumps(assistant({"type": "text", "text": "Done."})) + "\n")
+        self.app.refresh()
+        pump(0.1)
+        self.assertTrue(text().endswith("● Bash(ls)\nDone.\n"))
+        self.app._row_menu(name, self.app.rows[name])  # its own menu: no tmux actions
+        pump(0.05)
+        self.app.toggle_focus(None)
+        self.app._resume(history.PastSession("ext", "/w", "t", "hello", 0, pid=proc.pid))  # already open: show it
+        self.assertEqual(self.app.focus, name)
+        proc.kill()
+        proc.wait()
+        self.app.refresh()
+        pump(0.1)
+        self.assertNotIn(name, self.app.tiles)
+        self.assertIsNone(self.app.focus)
 
     def test_panels_page_without_streams(self):
         d = self.dialog()

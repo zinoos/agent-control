@@ -23,3 +23,8 @@ so say so in your report when that happened.
 
 Changes to behavior come with a test in `tests/`, including edge cases (missing or broken files, wrong
 values, empty input). Use `unittest` only: no extra dependencies.
+
+Start every test module with `import tests` (before any `agentcontrol` import). That gives the run its own HOME,
+config and tmux server. Without it, a run started some other way (`discover -s tests` without `-t .`) uses the
+real paths and the tests delete the user's projects and settings. `tests/__init__.py` refuses to run if
+`agentcontrol` was imported first, and `tests/test_sandbox.py` checks the other ways of starting the suite.

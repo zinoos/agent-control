@@ -5,6 +5,7 @@ import unittest
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from unittest import mock
 
+import tests  # noqa: F401  first: this run's own HOME and config, before agentcontrol reads its paths
 from agentcontrol import settings, tokens
 
 

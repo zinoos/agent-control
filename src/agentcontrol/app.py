@@ -1,5 +1,6 @@
 """agentControl: every Claude Code agent at a glance. Their terminals, live streams of agent
-desktops, and a tmux-like grid to put several on one screen."""
+desktops, and a tmux-like grid to put several on one screen. Claude Code sessions running elsewhere (a terminal,
+an editor, Claude Desktop) show up too, read-only."""
 
 from __future__ import annotations
 
@@ -17,8 +18,8 @@ gi.require_version("Adw", "1")
 gi.require_version("Pango", "1.0")
 from gi.repository import Adw, Gdk, Gio, GLib, GObject, Gtk, Pango  # noqa: E402
 
-from . import history, projects, sessions, settings, stream  # noqa: E402
-from .tile import SessionTile  # noqa: E402
+from . import external, history, projects, sessions, settings, stream  # noqa: E402
+from .tile import ExternalTile, SessionTile  # noqa: E402
 from .tokens import TokenPanel  # noqa: E402
 
 ICONS = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "icons")
@@ -55,6 +56,7 @@ window, .main { background: #0e0f12; }
 .brand { font-weight: 800; }
 .running-pill { background: alpha(#51cf66, 0.2); color: #51cf66; font-weight: 700; font-size: 10px;
                 border-radius: 4px; padding: 1px 6px; }
+.transcript, .transcript text { background: transparent; }
 """
 
 
@@ -231,13 +233,22 @@ class App(Adw.Application):
 
     def _poll(self):
         try:
-            ss = sessions.list_sessions()
+            ss = self._list()
         except Exception:
             return
         GLib.idle_add(self._apply, ss)
 
     def refresh(self):
-        self._apply(sessions.list_sessions())
+        self._apply(self._list())
+
+    @staticmethod
+    def _list() -> list:
+        """Our agents, then the Claude Code sessions running anywhere else."""
+        ss = sessions.list_sessions()
+        try:
+            return ss + external.list_external(ss)
+        except Exception:
+            return ss
 
     def _apply(self, ss: list[sessions.Session]):
         names = [s.name for s in ss]
@@ -282,7 +293,7 @@ class App(Adw.Application):
                     self.focus = None
         for n in names:
             if n not in self.tiles:
-                self.tiles[n] = SessionTile(self, n)
+                self.tiles[n] = (ExternalTile if isinstance(by[n], external.External) else SessionTile)(self, n)
                 changed = True
             self.tiles[n].update(by[n])
         if changed:
@@ -431,6 +442,14 @@ class App(Adw.Application):
         self.toggle_focus(row.name)
 
     def _row_menu(self, name, row):
+        s = self.sessions.get(name)
+        if isinstance(s, external.External):
+            items = [("Focus", lambda: self.toggle_focus(name))]
+            if s.window:
+                items.append((f"Show its window ({s.where})", lambda: self.tiles[name]._bg(self.tiles[name]._raise)))
+            items.append(("Copy folder path", lambda: self._copy(s.cwd)))
+            self._popover(row, items)
+            return
         self._popover(row, (("Focus", lambda: self.toggle_focus(name)),
                             ("Interrupt (Esc)", lambda: sessions.interrupt(name)),
                             ("Copy attach command", lambda: self._copy(f"ac attach {name}")),
@@ -665,9 +684,11 @@ class App(Adw.Application):
 
     def _resume(self, p: history.PastSession):
         if p.pid:
-            # Already open: show its tile if it runs in agentControl, rather than a second copy of the session.
+            # Already open: show its tile (an agent's, or the read-only one of a session running elsewhere) rather
+            # than a second copy of the session.
             mine = next((s for s in self.sessions.values()
-                         if s.pane_pid == p.pid or s.pane_pid in sessions._ancestors(p.pid)), None)
+                         if (s.pid == p.pid if isinstance(s, external.External)
+                             else s.pane_pid == p.pid or s.pane_pid in sessions._ancestors(p.pid))), None)
             if mine:
                 if mine.name in self.hidden:
                     self.set_shown(mine.name, True)
